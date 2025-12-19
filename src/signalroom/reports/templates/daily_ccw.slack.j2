@@ -1,0 +1,23 @@
+:chart_with_upwards_trend: *Daily CCW Report - {{ report_date | date }}*
+
+*Overall Performance*
+> Conversions: *{{ total_conversions | number }}*
+> Spend: *{{ total_cost | currency }}*
+> CPA: *{{ overall_cpa | currency }}*
+
+---
+
+*Internal (Paid Media)*
+> Conversions: {{ internal_conversions | number }} | Spend: {{ internal_cost | currency }} | CPA: {{ internal_cpa | currency }}
+
+*External (Affiliates)*
+> Conversions: {{ external_conversions | number }} | Payout: {{ external_cost | currency }} | CPA: {{ external_cpa | currency }}
+
+---
+
+*Top Performers*
+{% for affiliate in top_affiliates %}
+{% if affiliate.is_internal %}:large_blue_circle:{% else %}:white_circle:{% endif %} *{{ affiliate.affiliate_label }}* - {{ affiliate.conversions | number }} conv @ {{ affiliate.cpa | currency }}
+{% endfor %}
+
+_:large_blue_circle: Internal | :white_circle: External_
