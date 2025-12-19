@@ -14,7 +14,7 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 ## Phase 1: Everflow Source ✅ COMPLETE
 
-**Branch**: `phase-1-everflow`
+**Branch**: `main`
 
 ### 1.1 Implementation
 
@@ -74,9 +74,9 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 ---
 
-## Phase 2: Redtrack Source
+## Phase 2: Redtrack Source ✅ COMPLETE
 
-**Branch**: `phase-2-redtrack`
+**Branch**: `main`
 
 ### 2.1 Implementation
 
@@ -139,9 +139,9 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 ---
 
-## Phase 3: Affiliate Mapping & Merge
+## Phase 3: Affiliate Mapping & Merge ✅ COMPLETE
 
-**Branch**: `phase-3-affiliate-merge`
+**Branch**: `main`
 
 ### 3.1 Create Mapping Table
 
@@ -218,9 +218,9 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 ---
 
-## Phase 4: Temporal Scheduling
+## Phase 4: Temporal Scheduling ✅ COMPLETE
 
-**Branch**: `phase-4-temporal-scheduling`
+**Branch**: `main`
 
 **Goal**: Replace `automated-reporting` launchd jobs with Temporal-managed schedules.
 
@@ -345,9 +345,9 @@ The `automated-reporting` project uses macOS launchd with:
 
 ---
 
-## Phase 5: Daily Reports
+## Phase 5: Daily Reports 🔄 IN PROGRESS
 
-**Branch**: `phase-5-daily-reports`
+**Branch**: `main`
 
 ### 5.1 Report Queries
 
@@ -398,49 +398,14 @@ The `automated-reporting` project uses macOS launchd with:
 
 ---
 
-## CLI Reference
-
-### Pipeline Commands
-
-```bash
-# Run S3 exports (all December)
-python -c "from signalroom.pipelines.runner import run_pipeline; print(run_pipeline('s3_exports', source_kwargs={'max_files': 18}))"
-
-# Run Everflow (single day)
-python -c "from signalroom.pipelines.runner import run_pipeline; print(run_pipeline('everflow', source_kwargs={'start_date': '2025-12-17', 'end_date': '2025-12-17', 'advertiser_id': 1}))"
-
-# Run Redtrack (single day)
-python -c "from signalroom.pipelines.runner import run_pipeline; print(run_pipeline('redtrack', source_kwargs={'start_date': '2025-12-17', 'end_date': '2025-12-17'}))"
-```
-
-### Temporal Commands
-
-```bash
-# Test Temporal connection
-python -c "import asyncio; from signalroom.temporal.config import get_temporal_client; asyncio.run(get_temporal_client())"
-
-# Trigger workflow
-python scripts/trigger_workflow.py SyncSourceWorkflow --source everflow --wait
-
-# Start worker (foreground)
-python -m signalroom.workers.main --queue api-tasks
-```
-
-### Database Commands
-
-```bash
-# Check row counts
-psql "$DATABASE_URL" -c "SELECT 'everflow', COUNT(*) FROM everflow.daily_stats UNION SELECT 'redtrack', COUNT(*) FROM redtrack.daily_spend;"
-```
-
----
-
 ## Progress Tracker
 
-| Phase | Branch | Status | Merged |
-|-------|--------|--------|--------|
-| 1. Everflow | phase-1-everflow | ✅ Complete | Pending merge |
-| 2. Redtrack | phase-2-redtrack | Not Started | |
-| 3. Affiliate Merge | phase-3-affiliate-merge | Not Started | |
-| 4. Temporal Scheduling | phase-4-temporal-scheduling | Not Started | |
-| 5. Daily Reports | phase-5-daily-reports | Not Started | |
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1. Everflow | ✅ Complete | Daily stats loading to Supabase |
+| 2. Redtrack | ✅ Complete | Daily spend loading to Supabase |
+| 3. Affiliate Merge | ✅ Complete | Mapping table + merge view created |
+| 4. Temporal Scheduling | ✅ Complete | Fly.io worker + Temporal Cloud schedules |
+| 5. Daily Reports | 🔄 In Progress | Templates created, schedules disabled |
+
+**Note**: Development was done on `main` branch rather than feature branches.

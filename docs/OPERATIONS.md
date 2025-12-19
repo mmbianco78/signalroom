@@ -447,3 +447,74 @@ docker run --rm -v signalroom_temporal-db-data:/data -v $(pwd):/backup alpine ta
 ### Your data (Supabase)
 
 Supabase handles backups automatically. For manual backup, use pg_dump or Supabase dashboard.
+
+---
+
+## CLI Reference
+
+### Pipeline Commands
+
+```bash
+# Run pipeline directly (bypasses Temporal)
+python scripts/run_pipeline.py s3_exports
+python scripts/run_pipeline.py everflow
+python scripts/run_pipeline.py redtrack
+
+# With specific date range
+python scripts/run_pipeline.py everflow --start-date 2025-12-17 --end-date 2025-12-18
+
+# Dry run
+python scripts/run_pipeline.py everflow --dry-run
+```
+
+### Temporal Commands
+
+```bash
+# Test connection
+python scripts/test_temporal_connection.py
+
+# Trigger workflow (returns immediately)
+python scripts/trigger_workflow.py everflow
+
+# Trigger and wait for completion
+python scripts/trigger_workflow.py everflow -w
+
+# Trigger with notification
+python scripts/trigger_workflow.py everflow -w --notify
+
+# Setup/update schedules
+python scripts/setup_schedules.py
+
+# Delete all schedules
+python scripts/setup_schedules.py --delete
+```
+
+### Database Commands
+
+```bash
+# Connect to Supabase
+source .env
+psql "postgresql://${SUPABASE_DB_USER}:${SUPABASE_DB_PASSWORD}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT}/${SUPABASE_DB_NAME}"
+
+# Quick row counts
+psql "$DATABASE_URL" -c "
+SELECT 'everflow.daily_stats' as table_name, COUNT(*) FROM everflow.daily_stats
+UNION ALL
+SELECT 'redtrack.daily_spend', COUNT(*) FROM redtrack.daily_spend
+UNION ALL
+SELECT 's3_exports.daily_exports', COUNT(*) FROM s3_exports.daily_exports;
+"
+```
+
+### Report Commands
+
+```bash
+# Test report rendering (no send)
+python -c "from signalroom.reports import run_report; print(run_report('daily_ccw'))"
+
+# With specific date
+python -c "from signalroom.reports import run_report; print(run_report('daily_ccw', params={'date': '2025-12-18'}))"
+
+# Render alert
+python -c "from signalroom.reports import render_alert; print(render_alert('Test', 'Message', level='warning'))"
+```
