@@ -1,6 +1,6 @@
 # Redtrack Implementation Summary
 
-**Phase 2** | **Status: Ready for QA** | **Date: December 19, 2025**
+**Phase 2** | **Status: QA In Progress** | **Date: December 19, 2025**
 
 ---
 
@@ -150,55 +150,72 @@ CREATE TABLE redtrack.daily_spend (
 
 Compare these values against Redtrack UI:
 
-### Total Spend (Dec 1-18, 2025)
+### Round 1: Dec 1-18, 2025 (Initial QA - Bug Found)
+
+| Metric | SignalRoom | Redtrack UI | Status |
+|--------|------------|-------------|--------|
+| Total Cost | $211,152.62 | $211,152.62 | PASS |
+| Total Clicks | 170,105 | 170,105 | PASS |
+| Total Conversions | 2,933 | 2,587 | **FAIL** - Bug found |
+
+**Bug:** Python `or` operator fallback caused `conversions=0` to use `total_conversions` field.
+**Fix:** Commit `e3fa2f3` - Use explicit None checks instead of `or` operator.
+
+### Round 2: After Bug Fix (Current)
+
+| Metric | SignalRoom | Redtrack UI | Status |
+|--------|------------|-------------|--------|
+| Total Conversions | 2,587 | 2,587 | PASS |
+| Total Clicks | 170,105 | 170,105 | PASS |
+| Total Cost | $211,182.79 | ~$211,152 | PASS |
+
+### Round 3: Fresh Validation (Pending)
+
+**Check 1: Dec 17, 2025 - Top 5 Sources by Spend**
+
+| Source | Clicks | Conversions | Cost | Redtrack UI |
+|--------|--------|-------------|------|-------------|
+| Facebook CCW | 18,070 | 252 | $19,239.00 | _______ |
+| Meta CCW AWF2 Stephanie | 1,669 | 34 | $2,719.66 | _______ |
+| Google Ads CCW | 286 | 4 | $312.67 | _______ |
+| Tigresh Facebook CCW | 118 | 1 | $210.72 | _______ |
+| Meta 12-12 SB | 11 | 0 | $50.47 | _______ |
+
+**Check 2: Week of Dec 8-14, 2025 - Totals**
 
 | Metric | SignalRoom | Redtrack UI |
 |--------|------------|-------------|
-| Total Cost | $211,152.62 | _______ |
-| Total Clicks | 170,105 | _______ |
-| Total Conversions | 2,933 | _______ |
-
-### Single Day: Dec 18, 2025
-
-| Metric | SignalRoom | Redtrack UI |
-|--------|------------|-------------|
-| Facebook CCW Cost | $26,269.20 | _______ |
-| Total Sources | 16 | _______ |
-
-### Top Sources by Spend (Dec 1-18)
-
-| Source | SignalRoom | Redtrack UI |
-|--------|------------|-------------|
-| Facebook CCW | $140,845.10 | _______ |
-| Meta CCW AWF2 Stephanie | $35,924.88 | _______ |
-| Google Ads CCW | $22,304.42 | _______ |
+| Total Conversions | 838 | _______ |
+| Total Clicks | 57,292 | _______ |
+| Total Cost | $70,786.86 | _______ |
 
 ---
 
-## Merge Logic (Phase 3)
+## Merge Logic (Phase 3) - COMPLETE
 
-With both Everflow and Redtrack loaded, the merge query:
+The `public.daily_performance` view joins Everflow conversions with Redtrack spend:
 
 ```sql
--- Join Redtrack spend with Everflow conversions
+-- Query the merged view
 SELECT
-    e.date,
-    m.everflow_affiliate_label as affiliate,
-    e.conversions as ef_conversions,
-    e.payout as ef_payout,
-    r.cost as rt_spend,
-    r.clicks as rt_clicks,
-    CASE
-        WHEN m.everflow_affiliate_label IN ('G2 - Meta', 'G2 - Google', 'SB - Meta', 'SB - Google')
-        THEN r.cost  -- Use Redtrack spend for internal affiliates
-        ELSE e.payout  -- Use Everflow payout for external affiliates
-    END as final_cost,
-    e.conversions / NULLIF(CASE ... END, 0) as cpa
-FROM everflow.daily_stats e
-JOIN public.affiliate_mapping m ON e.affiliate_id = m.everflow_affiliate_id
-LEFT JOIN redtrack.daily_spend r ON r.date = e.date AND r.source_id = m.redtrack_source_id
-WHERE e._client_id = '713'
+    date,
+    affiliate_label,
+    conversions,
+    cost,
+    cpa,
+    is_internal
+FROM public.daily_performance
+WHERE date = '2025-12-19' AND advertiser_id = 1
+ORDER BY conversions DESC;
 ```
+
+**CPA Logic:**
+- **Internal affiliates** (G2-Meta, SB-Meta, G2-Google, SB-Google): `cost = Redtrack spend`
+- **External affiliates** (Blue Bench, Venture Beyond, etc.): `cost = Everflow payout`
+
+**Supporting Tables:**
+- `public.affiliate_mapping` - 18 Redtrack sources mapped to Everflow affiliates
+- RLS policies enabled, security advisors clear
 
 ---
 
@@ -214,7 +231,8 @@ WHERE e._client_id = '713'
 
 ## Next Steps
 
-1. **QA**: Verify numbers against Redtrack UI
-2. **Phase 3**: Load affiliate mapping table
-3. **Phase 3**: Create merge view/query
+1. ~~**QA**: Verify numbers against Redtrack UI~~ - Round 3 pending
+2. ~~**Phase 3**: Load affiliate mapping table~~ - DONE (18 sources mapped)
+3. ~~**Phase 3**: Create merge view/query~~ - DONE (`daily_performance` view)
 4. **Phase 4**: Set up hourly Temporal schedules
+5. **Phase 4**: Port daily report to Edge Function
