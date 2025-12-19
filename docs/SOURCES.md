@@ -203,6 +203,7 @@ LIMIT 10;
 - One API call per day for date-level granularity
 - Automatic retry with backoff on 429 rate limit
 - Adds metadata: `_client_id`, `_loaded_at`
+- Uses `conversions` field only (not `total_conversions` which includes all event types)
 
 **Schema Details (daily_spend)**:
 | Column | Type | Description |
