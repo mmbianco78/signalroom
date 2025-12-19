@@ -1,234 +1,152 @@
 # Roadmap
 
-## Current State: Foundation Complete (~60% production-ready)
+## Current State (December 2025)
 
-The core architecture is solid:
-- Temporal integration working
-- dlt pipeline runner working
-- 2 of 6 sources implemented (posthog, mautic)
-- 1 source partially implemented (s3_exports)
-- Notifications working
-- Docker/compose ready
+### Completed
+- [x] S3 exports source fully implemented (multi-prefix, client tagging)
+- [x] 650k rows loaded to Supabase (orders_create + orders_update)
+- [x] Temporal Cloud configured (signalroom-713.nzg5u)
+- [x] Everflow/Redtrack credentials and API docs captured
+- [x] SQL query library created
+- [x] Core architecture working
 
-**Not ready for production data flows** due to gaps below.
-
----
-
-## Critical Gaps
-
-### 1. No State Tracking / Resumability
-
-**Problem**: If a pipeline fails mid-run, we restart from scratch. No checkpointing.
-
-**Impact**:
-- Wasted compute re-processing already-loaded data
-- Risk of duplicates if failure happens after partial Postgres insert
-- Can't resume from where we left off
-
-**Solution**:
-- [ ] Implement dlt state tracking for s3_exports (track processed files)
-- [ ] Implement incremental loading with state persistence
-- [ ] Add activity-level checkpointing for large batches
-
-**Example** (s3_exports):
-```python
-@dlt.resource
-def daily_exports():
-    # Get state of processed files
-    processed = dlt.current.resource_state().setdefault("processed_files", [])
-
-    for file_path in files:
-        if file_path in processed:
-            continue  # Skip already processed
-
-        yield from process_file(file_path)
-
-        # Mark as processed
-        processed.append(file_path)
-```
+### In Progress
+- [ ] Everflow source implementation
+- [ ] Redtrack source implementation
+- [ ] Temporal namespace activation
 
 ---
 
-### 2. No Client Tagging
+## Implementation Plan
 
-**Problem**: `clients.py` exists but is never used. Data has no `_client_id` column.
+### Phase 1: Complete Data Sources (Priority: High)
 
-**Impact**:
-- Can't filter data by client
-- Can't run per-client analytics
-- Can't isolate client data
+#### 1.1 Everflow Source
+**Goal**: Pull affiliate conversion and revenue data
 
-**Solution**:
-- [ ] Pass `client_id` through pipeline chain
-- [ ] Inject `_client_id` column in all sources
-- [ ] Update workflows to accept client_id parameter
+| Task | Status | Notes |
+|------|--------|-------|
+| Implement aggregated report endpoint | TODO | POST `/reporting/network/aggregated-data` |
+| Add date range and advertiser filtering | TODO | advertiser_id: 1=CCW, 2=EXP |
+| Fields: clicks, conversions, revenue, payout, profit | TODO | Group by date, affiliate |
+| Incremental loading by date | TODO | Track last_loaded_date |
+| Test with real API | TODO | Credentials in .env |
 
----
+**API Reference**: See `docs/INTEGRATIONS.md`
 
-### 3. No Tests
+#### 1.2 Redtrack Source
+**Goal**: Pull ad spend data for internal affiliates
 
-**Problem**: Only `conftest.py` exists. Zero test coverage.
+| Task | Status | Notes |
+|------|--------|-------|
+| Implement report endpoint | TODO | POST/GET `/report` |
+| Add date range filtering | TODO | |
+| Fields: clicks, conversions, cost | TODO | Group by date, source |
+| Map source_id to affiliate | TODO | Use internal-affiliates mapping |
+| Test with real API | TODO | Credentials in .env |
 
-**Impact**:
-- Can't refactor safely
-- Can't catch regressions
-- No confidence in changes
+#### 1.3 Merge Logic
+**Goal**: Join Everflow conversions with Redtrack spend
 
-**Solution**:
-- [ ] Unit tests for each source (mock API responses)
-- [ ] Integration tests with DuckDB destination
-- [ ] Workflow tests with Temporal test framework
-
----
-
-### 4. Stubbed Sources
-
-**Problem**: 3 of 6 sources are stubs returning no data.
-
-| Source | Status | Priority |
-|--------|--------|----------|
-| everflow | Stubbed | High (affiliate data) |
-| redtrack | Stubbed | Medium |
-| google_sheets | Stubbed | Low |
-
-**Solution**:
-- [ ] Implement everflow source with reporting API
-- [ ] Implement redtrack source
-- [ ] Implement google_sheets source
+| Task | Status | Notes |
+|------|--------|-------|
+| Create affiliate mapping table in Supabase | TODO | From internal-affiliates.csv |
+| Daily merge view/query | TODO | Join by date + affiliate |
+| Calculate CPA (cost/conversions) | TODO | |
 
 ---
 
-### 5. No Cron Scheduling
+### Phase 2: Scheduling & Automation
 
-**Problem**: `ScheduledSyncWorkflow` exists but no cron trigger.
+#### 2.1 Temporal Schedules
+| Task | Status | Notes |
+|------|--------|-------|
+| Daily S3 sync (6am ET) | TODO | orders_create, orders_update |
+| Daily Everflow sync (7am ET) | TODO | After S3 completes |
+| Daily Redtrack sync (7am ET) | TODO | After S3 completes |
+| Daily merge report | TODO | After both complete |
 
-**Impact**: Must manually trigger syncs or use external cron.
-
-**Solution**:
-- [ ] Add Temporal schedules for daily/hourly syncs
-- [ ] Make schedule configurable per source
-
----
-
-### 6. No Metrics / Observability
-
-**Problem**: Logging only. No metrics, no traces.
-
-**Impact**:
-- Can't track rows loaded over time
-- Can't measure pipeline duration trends
-- No alerting on anomalies (e.g., 0 rows loaded)
-
-**Solution**:
-- [ ] Add Prometheus metrics (row counts, duration, errors)
-- [ ] Add OpenTelemetry tracing
-- [ ] Add anomaly detection (e.g., "loaded 0 rows, expected 1000+")
+#### 2.2 Notifications
+| Task | Status | Notes |
+|------|--------|-------|
+| Slack alerts on failure | TODO | Already stubbed |
+| Daily summary to Slack | TODO | Row counts, revenue |
+| SMS alerts for critical failures | TODO | Via Twilio |
 
 ---
 
-### 7. No Dead Letter Handling
+### Phase 3: Reports & Analytics
 
-**Problem**: Failed activities are logged but not archived for replay.
+#### 3.1 Daily Reports (port from automated-reporting)
+| Report | Status | Notes |
+|--------|--------|-------|
+| Daily CCW Summary | TODO | Conversions, revenue, spend, CPA |
+| Daily EXP Summary | TODO | Same format |
+| Affiliate Leaderboard | TODO | Top performers by revenue |
+| State Heatmap Data | TODO | Geographic breakdown |
 
-**Impact**:
-- Can't inspect failed payloads
-- Can't retry specific failures
-- Lost visibility into error patterns
-
-**Solution**:
-- [ ] Archive failed activity inputs to a DLQ table
-- [ ] Add retry-from-DLQ capability
-- [ ] Dashboard for failure analysis
-
----
-
-## Priority Order
-
-### Phase 1: Make It Work (Before first real data)
-
-| Task | Why | Effort |
-|------|-----|--------|
-| Add client_id tagging | Core requirement for multi-client | 2h |
-| Implement s3_exports state tracking | Avoid reprocessing files | 4h |
-| Fix s3_exports to use S3_PREFIXES | Support multiple paths | 1h |
-| Basic tests for s3_exports | Confidence before real data | 4h |
-
-### Phase 2: Make It Reliable (Before production)
-
-| Task | Why | Effort |
-|------|-----|--------|
-| Implement everflow source | Key affiliate data | 8h |
-| Add Temporal cron schedules | Automated syncs | 4h |
-| Activity idempotency checks | Prevent duplicates | 4h |
-| Integration tests | Catch regressions | 8h |
-
-### Phase 3: Make It Observable (Production-ready)
-
-| Task | Why | Effort |
-|------|-----|--------|
-| Prometheus metrics | Track health | 4h |
-| Anomaly alerting | Catch issues early | 4h |
-| Dead letter queue | Debug failures | 8h |
-| Distributed tracing | Debug slow pipelines | 4h |
-
-### Phase 4: Make It Complete
-
-| Task | Why | Effort |
-|------|-----|--------|
-| Implement redtrack source | More data sources | 8h |
-| Implement google_sheets source | Manual data entry | 4h |
-| Schema validation | Catch breaking changes | 4h |
-| Workflow versioning | Safe deploys | 4h |
+#### 3.2 Dashboards
+| Task | Status | Notes |
+|------|--------|-------|
+| Supabase SQL queries working | DONE | docs/QUERIES.sql |
+| Connect to visualization tool | TODO | Metabase/Grafana/Retool? |
 
 ---
 
-## Open Questions
+### Phase 4: Production Hardening
 
-### Architecture
+#### 4.1 State Tracking
+| Task | Status | Notes |
+|------|--------|-------|
+| S3: Track processed files | TODO | Avoid reprocessing |
+| Everflow: Incremental by date | TODO | |
+| Redtrack: Incremental by date | TODO | |
 
-1. **Single vs Multiple Datasets**: Should each client have its own Postgres schema (e.g., `client_713.orders`) or shared schema with `_client_id` column?
+#### 4.2 Error Handling
+| Task | Status | Notes |
+|------|--------|-------|
+| Retry policies tuned | DONE | 5 attempts, exponential backoff |
+| Dead letter queue | TODO | Archive failed payloads |
+| Anomaly detection | TODO | Alert on 0 rows, missing data |
 
-2. **Project Mapping**: How do we map data to projects (CCW, Expungement)? Lookup tables vs naming conventions?
-
-3. **Browser Worker**: When do we need headless browser automation? Which sources require it?
-
-### Operations
-
-4. **Supabase Project**: Which Supabase project is the production destination? Need connection details.
-
-5. **Alerting Channels**: Slack only, or also email/SMS? Who gets notified?
-
-6. **Backup Strategy**: How often to backup? Who owns Supabase backups?
-
-### Sources
-
-7. **S3 Data Structure**: Do the CSVs in `orders-create`, `orders-update`, `prospects-create` have consistent schemas? Do they need different tables?
-
-8. **Everflow/Redtrack Access**: Do we have API credentials? What endpoints do we need?
-
-9. **Historical Data**: How much historical data to backfill? Date ranges?
+#### 4.3 Observability
+| Task | Status | Notes |
+|------|--------|-------|
+| Structured logging | DONE | structlog |
+| Metrics (Prometheus) | TODO | Row counts, duration |
+| Tracing (OpenTelemetry) | TODO | |
 
 ---
 
-## Definition of Done: Production-Ready
+## Open Questions (Resolved)
 
-- [ ] All sources implemented and tested
-- [ ] Client tagging working
-- [ ] State tracking for incremental loads
-- [ ] Cron schedules configured
-- [ ] Metrics dashboard
-- [ ] Alerting on failures and anomalies
-- [ ] Runbook documented
-- [ ] At least one successful week of automated syncs
+| Question | Answer |
+|----------|--------|
+| Supabase project? | 713 Main DB (foieoinshqlescyocbld) |
+| S3 data structure? | 3 prefixes, 129 columns, consistent schema |
+| Everflow/Redtrack access? | Credentials captured, APIs documented |
+| Client tagging? | `_client_id` column implemented |
+| Project mapping? | Via `product_category` column (CCW, EXP) |
 
 ---
 
-## Technical Debt
+## Immediate Next Steps
 
-| Item | Location | Notes |
-|------|----------|-------|
-| TODO: Track processed files | s3_exports/__init__.py:58 | Needs dlt state |
-| TODO: Token caching | mautic/__init__.py | Wasteful token refresh |
-| Empty sources list | clients.py:29,34 | Never configured |
-| Hardcoded Slack | workflows.py:67,79 | Should be configurable |
-| No error classification | temporal/config.py | All errors retry same way |
+1. **Implement Everflow source** - Use existing API docs, test with real credentials
+2. **Implement Redtrack source** - Same approach
+3. **Create affiliate mapping table** - Load internal-affiliates.csv to Supabase
+4. **Test Temporal Cloud connection** - Once namespace is active
+5. **Set up first scheduled workflow** - Daily S3 sync
+
+---
+
+## Timeline Estimate
+
+| Phase | Duration | Dependencies |
+|-------|----------|--------------|
+| Phase 1 (Sources) | 2-3 days | Everflow/Redtrack API access |
+| Phase 2 (Scheduling) | 1 day | Temporal namespace active |
+| Phase 3 (Reports) | 1-2 days | Sources complete |
+| Phase 4 (Hardening) | Ongoing | Production usage |
+
+**Target**: Automated daily syncs running within 1 week.
