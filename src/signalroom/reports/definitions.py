@@ -13,10 +13,33 @@ daily_ccw = register_report(
         query="daily_ccw.sql",
         templates={
             "slack": "daily_ccw.slack.j2",
+            "email": "daily_ccw.email.mjml",
+            "sms": "daily_ccw.sms.j2",
         },
         schedule="0 7 * * *",  # 7am daily
         params={
             "advertiser_id": 1,  # CCW
+        },
+    )
+)
+
+# Alert Report (for pipeline failures, warnings, etc.)
+alert = register_report(
+    Report(
+        name="alert",
+        description="Generic alert notification for errors and warnings",
+        query="",  # No query - data passed directly
+        templates={
+            "slack": "alert.slack.j2",
+            "email": "alert.email.mjml",
+            "sms": "alert.sms.j2",
+        },
+        params={
+            "level": "error",  # error, warning, info
+            "title": "Alert",
+            "message": "",
+            "details": {},
+            "source": "signalroom",
         },
     )
 )
@@ -29,6 +52,8 @@ daily_ccw = register_report(
 #         query="daily_ccw.sql",  # Same query, different advertiser_id
 #         templates={
 #             "slack": "daily_ccw.slack.j2",
+#             "email": "daily_ccw.email.mjml",
+#             "sms": "daily_ccw.sms.j2",
 #         },
 #         schedule="0 7 * * *",
 #         params={

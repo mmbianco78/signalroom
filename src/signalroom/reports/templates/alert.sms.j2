@@ -1,0 +1,1 @@
+{% if level == 'error' %}[ALERT]{% elif level == 'warning' %}[WARN]{% else %}[INFO]{% endif %} {{ title }}{% if message %}: {{ message[:100] }}{% if message|length > 100 %}...{% endif %}{% endif %}

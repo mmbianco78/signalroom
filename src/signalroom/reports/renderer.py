@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import jinja2
-import mjml
+from mjml import mjml_to_html
 
 from signalroom.common import get_logger
 from signalroom.reports.registry import Report, get_report
@@ -119,8 +119,8 @@ def render_mjml(template_name: str, data: dict[str, Any]) -> str:
     mjml_content = render_template(template_name, data)
 
     # Then compile MJML to HTML
-    result = mjml.mjml2html(mjml_content)
-    return result
+    result = mjml_to_html(mjml_content)
+    return result.html
 
 
 def render_report(

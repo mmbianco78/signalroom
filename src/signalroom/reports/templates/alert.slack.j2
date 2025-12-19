@@ -1,0 +1,14 @@
+{% if level == 'error' %}:rotating_light:{% elif level == 'warning' %}:warning:{% else %}:information_source:{% endif %} *{{ title }}*
+
+{% if message %}{{ message }}{% endif %}
+
+{% if details %}
+```
+{% for key, value in details.items() %}
+{{ key }}: {{ value }}
+{% endfor %}
+```
+{% endif %}
+
+{% if source %}_Source: {{ source }}_{% endif %}
+{% if timestamp %} | _{{ timestamp | date("%Y-%m-%d %H:%M:%S") }}_{% endif %}

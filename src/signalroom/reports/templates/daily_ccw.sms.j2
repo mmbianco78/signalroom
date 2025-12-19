@@ -1,0 +1,1 @@
+CCW {{ report_date | date("%m/%d") }}: {{ total_conversions | number }} conv, {{ total_cost | currency }} spend, {{ overall_cpa | currency }} CPA. Top: {{ top_affiliates[0].affiliate_label if top_affiliates else 'N/A' }} ({{ top_affiliates[0].conversions if top_affiliates else 0 }})

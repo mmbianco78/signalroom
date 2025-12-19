@@ -121,7 +121,7 @@ def run_report(
     return content
 
 
-async def _send_report(channel: str, content: str) -> None:
+async def _send_report(channel: str, content: str, subject: str = "SignalRoom Report") -> None:
     """Send report content via the specified channel."""
     from signalroom.notifications.channels import send_email, send_slack, send_sms
 
@@ -130,7 +130,7 @@ async def _send_report(channel: str, content: str) -> None:
     elif channel == "email":
         await send_email(
             to=settings.report_email_to or "reports@example.com",
-            subject="Daily CCW Report",
+            subject=subject,
             html=content,
         )
     elif channel == "sms":
@@ -140,3 +140,40 @@ async def _send_report(channel: str, content: str) -> None:
         )
     else:
         log.warning("unknown_channel", channel=channel)
+
+
+def render_alert(
+    title: str,
+    message: str = "",
+    level: str = "error",
+    details: dict[str, Any] | None = None,
+    source: str = "signalroom",
+    channel: str = "slack",
+) -> str:
+    """Render an alert notification.
+
+    Args:
+        title: Alert title
+        message: Alert message/description
+        level: Severity level ("error", "warning", "info")
+        details: Additional key-value details to include
+        source: Source system/component
+        channel: Output channel ("slack", "email", "sms")
+
+    Returns:
+        Rendered alert content
+    """
+    from datetime import datetime
+
+    from signalroom.reports.renderer import render_report
+
+    data = {
+        "title": title,
+        "message": message,
+        "level": level,
+        "details": details or {},
+        "source": source,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+    return render_report("alert", channel, data)
