@@ -1,0 +1,75 @@
+# dlt Pipeline Configuration
+# Non-sensitive settings only. Secrets go in secrets.toml (gitignored).
+# See: https://dlthub.com/docs/general-usage/credentials/configuration
+
+# =============================================================================
+# Runtime Settings
+# =============================================================================
+
+[runtime]
+log_level = "INFO"
+
+# =============================================================================
+# Source Defaults
+# =============================================================================
+
+[sources.everflow]
+base_url = "https://api.eflow.team"
+
+[sources.redtrack]
+base_url = "https://api.redtrack.io"
+
+[sources.posthog]
+base_url = "https://us.i.posthog.com"
+
+# =============================================================================
+# Client-Specific Reference Data
+# =============================================================================
+# Pattern: [sources.{source_type}.clients.{client_id}]
+# All client data follows: data/clients/{client_id}/{category}/{filename}
+
+# --- Client: 713 ---
+
+[sources.affiliate_mapping.clients.713]
+csv_path = "data/clients/713/mappings/internal-affiliates.csv"
+
+# --- Client: CTI (future) ---
+
+# [sources.affiliate_mapping.clients.cti]
+# csv_path = "data/clients/cti/mappings/internal-affiliates.csv"
+
+# =============================================================================
+# Destination Settings (non-sensitive)
+# =============================================================================
+
+[destination.postgres]
+# Connection string is in secrets.toml
+# credentials = "postgresql://..."  # <-- In secrets.toml only!
+
+# Dataset naming: schema name in Postgres
+# Defaults to pipeline name if not specified
+
+# =============================================================================
+# Pipeline Defaults
+# =============================================================================
+
+[pipeline]
+# Default dataset name prefix (schema in Postgres)
+# Can be overridden per-pipeline
+
+# =============================================================================
+# Notes for Contributors
+# =============================================================================
+#
+# 1. NEVER put API keys, passwords, or connection strings here
+#    Those go in secrets.toml (which is gitignored)
+#
+# 2. Client-specific settings use the pattern:
+#    [sources.{type}.clients.{client_id}]
+#
+# 3. See docs/DATA_ORGANIZATION.md for full client data patterns
+#
+# 4. When adding a new client:
+#    a. Create data/clients/{client_id}/mappings/
+#    b. Add config section here
+#    c. Update docs/DATA_ORGANIZATION.md

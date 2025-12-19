@@ -52,7 +52,8 @@ htmlcov/
 .ruff_cache/
 
 # dlt
-.dlt/
+.dlt/secrets.toml
+.dlt/pipelines/
 *.duckdb
 *.duckdb.wal
 

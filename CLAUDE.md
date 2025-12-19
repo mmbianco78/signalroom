@@ -100,6 +100,15 @@ make temporal-ui          # Open http://localhost:8080
 
 ```
 signalroom/
+├── .dlt/
+│   ├── config.toml        # Pipeline config (non-sensitive, committed)
+│   └── secrets.toml       # API keys (gitignored)
+├── data/
+│   └── clients/           # Client-specific reference data
+│       ├── 713/
+│       │   └── mappings/
+│       │       └── internal-affiliates.csv
+│       └── cti/           # Future clients
 ├── src/signalroom/
 │   ├── sources/           # dlt sources (one per platform)
 │   │   ├── s3_exports/    # CSV files from S3
@@ -115,11 +124,53 @@ signalroom/
 │   └── common/            # Config, logging, clients
 ├── scripts/               # CLI tools for manual runs
 ├── tests/
+├── docs/
+│   ├── templates/         # Documentation templates
+│   └── DATA_ORGANIZATION.md  # Client data patterns (READ THIS)
 ├── docker-compose.yml     # Temporal + Postgres + Worker
 ├── Dockerfile
 ├── Makefile
 └── pyproject.toml
 ```
+
+## Client Data Organization (IMPORTANT)
+
+**Full documentation:** `docs/DATA_ORGANIZATION.md`
+
+### Critical Rules
+
+1. **Client-specific data path**: `data/clients/{client_id}/{category}/{filename}`
+   - Example: `data/clients/713/mappings/internal-affiliates.csv`
+   - NEVER: `data/713-file.csv` or `src/signalroom/data/`
+
+2. **All Supabase data tagged**: Every table must include `_client_id` column
+   ```python
+   yield {"data": value, "_client_id": client_id}
+   ```
+
+3. **Reference data flow**: CSV in repo → Load script → Supabase table
+   - CSV is source of truth (version controlled)
+   - Table has `client_id` column for filtering
+
+4. **dlt config hierarchy**: Use `.dlt/config.toml` for settings, not hardcoded paths
+   ```toml
+   [sources.affiliate_mapping.clients.713]
+   csv_path = "data/clients/713/mappings/internal-affiliates.csv"
+   ```
+
+### Current Clients
+
+| ID | Name | Status |
+|----|------|--------|
+| `713` | 713 | Active |
+| `cti` | ClayTargetInstruction | Planned |
+
+### When Adding New Client Data
+
+1. Create: `data/clients/{client_id}/{category}/`
+2. Add files following existing naming conventions
+3. Ensure Supabase tables have `client_id` column
+4. Update `docs/DATA_ORGANIZATION.md` if new patterns
 
 ## Configuration
 
