@@ -269,14 +269,23 @@ def _normalize_row(row: dict[str, Any], report_date: str | None = None) -> dict[
         except (ValueError, TypeError):
             return 0
 
+    # Use explicit None checks to handle 0 values correctly
+    def get_first_valid(keys: list[str]) -> Any:
+        """Get first non-None value from row for given keys."""
+        for key in keys:
+            val = row.get(key)
+            if val is not None:
+                return val
+        return None
+
     return {
         "date": row_date,
         "source_id": source_id,
         "source_name": source_name,
         "source_alias": source_alias,
-        "clicks": safe_int(row.get("clicks") or row.get("total_clicks")),
-        "conversions": safe_int(row.get("conversions") or row.get("total_conversions") or row.get("cv")),
-        "cost": safe_float(row.get("cost") or row.get("spend") or row.get("total_cost")),
+        "clicks": safe_int(get_first_valid(["clicks", "total_clicks"])),
+        "conversions": safe_int(get_first_valid(["conversions"])),  # Only use conversions field
+        "cost": safe_float(get_first_valid(["cost", "spend", "total_cost"])),
     }
 
 
