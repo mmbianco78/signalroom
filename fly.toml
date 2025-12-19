@@ -1,0 +1,30 @@
+# Fly.io configuration for SignalRoom worker
+# https://fly.io/docs/reference/configuration/
+
+app = "signalroom-worker"
+primary_region = "iad"  # US East (Virginia) - close to Temporal Cloud
+
+[build]
+  dockerfile = "Dockerfile"
+  target = "prod"
+
+[env]
+  # Non-sensitive configuration
+  TEMPORAL_TASK_QUEUE = "api-tasks"
+  LOG_LEVEL = "INFO"
+  # Temporal address and namespace set via secrets
+
+# No HTTP service - this is a worker process
+# It connects outbound to Temporal Cloud, no inbound traffic needed
+
+[processes]
+  worker = "python -m signalroom.workers.main --json-logs"
+
+# Resource allocation
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["worker"]
+
+# Health check via process status (no HTTP endpoint)
+# Fly will restart if the process exits
