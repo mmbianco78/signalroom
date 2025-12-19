@@ -1,0 +1,117 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Temporal Server (includes all Temporal services)
+  # ---------------------------------------------------------------------------
+  temporal:
+    image: temporalio/auto-setup:1.25
+    container_name: signalroom-temporal
+    ports:
+      - "7233:7233"   # gRPC frontend
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=temporal-db
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    depends_on:
+      temporal-db:
+        condition: service_healthy
+    volumes:
+      - ./docker/temporal-config:/etc/temporal/config/dynamicconfig
+    networks:
+      - signalroom
+
+  # ---------------------------------------------------------------------------
+  # Temporal Web UI
+  # ---------------------------------------------------------------------------
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    container_name: signalroom-temporal-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - temporal
+    networks:
+      - signalroom
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL for Temporal's internal state
+  # ---------------------------------------------------------------------------
+  temporal-db:
+    image: postgres:16-alpine
+    container_name: signalroom-temporal-db
+    ports:
+      - "5433:5432"   # 5433 to avoid conflict with local Postgres
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes:
+      - temporal-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signalroom
+
+  # ---------------------------------------------------------------------------
+  # API Worker (fast tasks - API calls, file processing)
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      target: dev
+    container_name: signalroom-worker
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TEMPORAL_TASK_QUEUE=api-tasks
+    env_file:
+      - .env
+    depends_on:
+      - temporal
+    volumes:
+      - ./src:/app/src:ro        # Mount source for hot reload in dev
+      - ./tests:/app/tests:ro
+    networks:
+      - signalroom
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Browser Worker (slow tasks - headless browser automation)
+  # Uncomment when needed
+  # ---------------------------------------------------------------------------
+  # worker-browser:
+  #   build:
+  #     context: .
+  #     target: prod-browser
+  #   container_name: signalroom-worker-browser
+  #   environment:
+  #     - TEMPORAL_ADDRESS=temporal:7233
+  #     - TEMPORAL_NAMESPACE=default
+  #     - TEMPORAL_TASK_QUEUE=browser-tasks
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - temporal
+  #   networks:
+  #     - signalroom
+  #   restart: unless-stopped
+  #   # Lower concurrency for browser tasks
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 2G
+
+networks:
+  signalroom:
+    driver: bridge
+
+volumes:
+  temporal-db-data:

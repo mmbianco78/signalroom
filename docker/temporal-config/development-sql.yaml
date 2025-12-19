@@ -1,0 +1,19 @@
+# Temporal dynamic configuration for development
+# See: https://docs.temporal.io/references/dynamic-configuration
+
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+
+limit.maxIDLength:
+  - value: 255
+
+# Increase history size limit for long-running workflows
+limit.historyCount.error:
+  - value: 50000
+
+limit.historyCount.warn:
+  - value: 10000
+
+# Enable advanced visibility (search attributes)
+system.enableActivityEagerExecution:
+  - value: true
