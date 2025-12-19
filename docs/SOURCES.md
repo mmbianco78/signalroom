@@ -4,7 +4,7 @@
 
 | Source | Status | Incremental | State Tracking | Client Tagging | Tests |
 |--------|--------|-------------|----------------|----------------|-------|
-| s3_exports | Partial | No | No | No | No |
+| s3_exports | ✅ Implemented | No | Via PK dedup | ✅ Yes | No |
 | everflow | Stubbed | - | - | - | No |
 | redtrack | Stubbed | - | - | - | No |
 | posthog | Implemented | Yes | No | No | No |
@@ -28,18 +28,39 @@
 **Resources**:
 | Resource | Write Mode | Primary Key | Description |
 |----------|------------|-------------|-------------|
-| daily_exports | append | _file_name, _row_id | All CSV rows with file metadata |
+| orders_create | append | _file_name, _row_id | New order records |
+| orders_update | append | _file_name, _row_id | Order status updates |
+| prospects_create | append | _file_name, _row_id | New prospect records (empty) |
 
 **Current Implementation**:
-- Reads all `*.csv` files matching `bucket/prefix/**/*.csv`
-- Adds metadata columns: `_file_name`, `_row_id`, `_file_date`
+- Creates one table per S3 prefix (orders-create → orders_create)
+- Adds metadata columns: `_file_name`, `_row_id`, `_file_date`, `_client_id`
 - Uses s3fs with AWS credentials from settings
+- Supports `max_files` param for limiting files (takes most recent)
+- Primary key deduplication prevents reloading same file
 
-**Known Gaps**:
-- [ ] No file tracking state (reprocesses all files every run)
-- [ ] No client_id tagging
-- [ ] Single resource - doesn't split by data type (orders vs prospects)
-- [ ] No schema validation
+**Schema Details (orders_create)**:
+
+Key columns (129 total):
+| Column | Example Values | Notes |
+|--------|---------------|-------|
+| orders_id | "3770978" | Unique order ID |
+| order_status | NEW, DECLINED, VOID/REFUNDED | No "approved" status |
+| total_amount | "95", "19", "35", "105" | Stored as text |
+| order_date | "2025-12-17" | Order creation date |
+| billing_email | customer email | Customer contact |
+| billing_state | "TX", "FL", "CA" | Geographic data |
+| product_category | "CCW" | Project identifier |
+| campaign_id | Campaign for attribution | Marketing source |
+| afid, sid, c1-c3 | Affiliate tracking params | Attribution |
+| chargeback_flag | "1" or empty | Risk indicator |
+| refund_flag | "1" or empty | Risk indicator |
+
+**Loaded Data (December 2025)**:
+| Table | Rows | Days |
+|-------|------|------|
+| orders_create | 304,951 | 18 |
+| orders_update | 346,044 | 18 |
 
 **Configuration**:
 ```
@@ -47,7 +68,30 @@ AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_REGION=us-east-1
 S3_BUCKET_NAME=sticky-713-data-repo
-S3_PREFIX=orders-create
+S3_PREFIXES=orders-create,orders-update,prospects-create
+```
+
+**Example Queries**:
+```sql
+-- Geographic breakdown of orders > $85
+SELECT
+  billing_state as state,
+  COUNT(DISTINCT orders_id) as orders,
+  ROUND(SUM(total_amount::numeric), 2) as revenue
+FROM s3_exports.orders_create
+WHERE order_status = 'NEW'
+  AND total_amount::numeric > 85
+GROUP BY billing_state
+ORDER BY revenue DESC;
+
+-- Daily revenue trend
+SELECT
+  _file_date as date,
+  COUNT(DISTINCT orders_id) as orders,
+  ROUND(SUM(total_amount::numeric), 2) as revenue
+FROM s3_exports.orders_create
+GROUP BY _file_date
+ORDER BY _file_date;
 ```
 
 ---
