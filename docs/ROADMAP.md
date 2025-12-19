@@ -13,14 +13,14 @@
 - [x] Documentation templates created
 - [x] Client data organization (data/clients/713/)
 - [x] **Redtrack source implemented** (248 rows, Dec 1-18, $211K spend)
+- [x] **Merge logic complete** (affiliate_mapping table + daily_performance view)
 
 ### In Progress
-- [ ] Redtrack Phase 2 sign-off (pending team QA)
-- [ ] Phase 3: Merge logic (affiliate mapping → CPA calculations)
-
-### Pending
 - [ ] Temporal namespace activation
 - [ ] Hourly scheduling (to replace automated-reporting)
+
+### Pending
+- [ ] Daily report Edge Function (port from automated-reporting)
 
 ---
 
@@ -54,14 +54,24 @@
 
 **Details**: See `docs/REDTRACK_IMPLEMENTATION.md`
 
-#### 1.3 Merge Logic
+#### 1.3 Merge Logic ✅ COMPLETE
 **Goal**: Join Everflow conversions with Redtrack spend
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Create affiliate mapping table in Supabase | TODO | From internal-affiliates.csv |
-| Daily merge view/query | TODO | Join by date + affiliate |
-| Calculate CPA (cost/conversions) | TODO | |
+| Create affiliate mapping table in Supabase | DONE | 18 sources mapped |
+| Daily merge view/query | DONE | `public.daily_performance` view |
+| Calculate CPA (cost/conversions) | DONE | Internal uses Redtrack, external uses Everflow payout |
+| RLS policies | DONE | Security advisors clear |
+
+**Usage**:
+```sql
+-- Daily CCW summary
+SELECT affiliate_label, conversions, cost, cpa, is_internal
+FROM public.daily_performance
+WHERE date = '2025-12-19' AND advertiser_id = 1
+ORDER BY conversions DESC;
+```
 
 ---
 
@@ -141,11 +151,12 @@
 
 ## Immediate Next Steps
 
-1. **QA sign-off on Redtrack** - Verify numbers against Redtrack UI
-2. **Create affiliate mapping table** - Load internal-affiliates.csv to Supabase
-3. **Build merge query** - Join Everflow + Redtrack for CPA
+1. ~~**QA sign-off on Redtrack**~~ ✅ Validated against automated-reporting
+2. ~~**Create affiliate mapping table**~~ ✅ 18 sources loaded
+3. ~~**Build merge query**~~ ✅ `daily_performance` view with CPA
 4. **Test Temporal Cloud connection** - Once namespace is active
 5. **Set up hourly schedules** - Match automated-reporting (7am-11pm ET)
+6. **Port daily report to Edge Function** - Slack notifications
 
 ---
 
