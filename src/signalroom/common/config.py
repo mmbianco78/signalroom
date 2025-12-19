@@ -77,10 +77,22 @@ class Settings(BaseSettings):
     twilio_from_number: str = ""
 
     # -------------------------------------------------------------------------
-    # Source APIs
+    # Everflow (affiliate tracking)
     # -------------------------------------------------------------------------
     everflow_api_key: SecretStr = SecretStr("")
+    everflow_base_url: str = "https://api.eflow.team"
+    everflow_agg_path: str = "/reporting/network/aggregated-data"
+
+    # -------------------------------------------------------------------------
+    # Redtrack (ad spend tracking)
+    # -------------------------------------------------------------------------
     redtrack_api_key: SecretStr = SecretStr("")
+    redtrack_base_url: str = "https://api.redtrack.io"
+    redtrack_report_path: str = "/report"
+
+    # -------------------------------------------------------------------------
+    # Other Source APIs
+    # -------------------------------------------------------------------------
     posthog_api_key: SecretStr = SecretStr("")
     posthog_project_id: str = ""
     posthog_host: str = "https://app.posthog.com"
