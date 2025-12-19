@@ -188,11 +188,12 @@ See `docs/FUTURE_IMPROVEMENTS.md` for:
 
 ## Immediate Next Steps
 
-1. **Temporal namespace activation** - Unblocks everything
-2. **Add Jinja2 + report module skeleton** - Can start without Temporal
-3. **Port daily CCW report logic** - SQL + Slack template
-4. **Fly.io setup** - Account, app, secrets
-5. **End-to-end test** - Manual trigger → Slack message
+1. ~~**Temporal namespace activation**~~ ✅ Active
+2. ~~**Add Jinja2 + report module skeleton**~~ ✅ Complete
+3. ~~**Port daily CCW report logic**~~ ✅ Complete
+4. **Fly.io setup** - Account, app, secrets ← **NEXT**
+5. **Deploy worker** - Start processing scheduled workflows
+6. **End-to-end test** - Schedule triggers → Worker processes → Slack message
 
 ---
 
