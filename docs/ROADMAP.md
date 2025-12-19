@@ -23,8 +23,8 @@
 - [x] Notification channels stubbed (Slack, Email, SMS)
 - [x] 650k+ rows loaded to Supabase
 
-### Blocking
-- [ ] Temporal namespace activation (waiting on Temporal Cloud)
+### Unblocked
+- [x] Temporal namespace activation (active as of Dec 2025)
 
 ---
 
@@ -42,68 +42,56 @@ All sources needed for daily reporting are implemented.
 
 ---
 
-### Phase 2: Temporal Scheduling
+### Phase 2: Temporal Scheduling ✅ COMPLETE
 
 **Goal**: Replicate automated-reporting's hourly schedule.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Test Temporal Cloud connection | TODO | Waiting on namespace activation |
-| Create `SyncSourceWorkflow` | DONE | In `temporal/workflows.py` |
-| Everflow hourly sync (7am-11pm ET) | TODO | Current day data |
-| Redtrack hourly sync (7am-11pm ET) | TODO | Current day data |
-| S3 daily sync (6am ET) | TODO | orders_create, orders_update |
-| Workflow error handling | TODO | Retry + notification on failure |
+| Test Temporal Cloud connection | ✅ Done | Connected to signalroom-713.nzg5u |
+| Create `SyncSourceWorkflow` | ✅ Done | In `temporal/workflows.py` |
+| Create `RunReportWorkflow` | ✅ Done | For scheduled report sending |
+| Everflow hourly sync (7am-11pm ET) | ✅ Done | Schedule: hourly-sync-everflow-redtrack |
+| Redtrack hourly sync (7am-11pm ET) | ✅ Done | Combined with Everflow schedule |
+| S3 daily sync (6am ET) | ✅ Done | Schedule: daily-sync-s3 |
+| Daily CCW report (7am ET) | ✅ Done | Schedule: daily-report-ccw |
+| Workflow error handling | ✅ Done | Retry + Slack notification on failure |
 
-**Schedule** (matches automated-reporting):
+**Active Schedules** (Temporal Cloud):
 ```
-Hourly 7am-11pm ET: Sync Everflow + Redtrack (current day)
-Daily 6am ET: Sync S3 exports
-Daily 7am ET: Send daily summary report
+hourly-sync-everflow-redtrack  - Hourly 7am-11pm ET: Sync Everflow + Redtrack
+daily-sync-s3                  - Daily 6am ET: Sync S3 exports
+daily-report-ccw               - Daily 7am ET: Send CCW report to Slack
 ```
+
+**Pending**: Start worker on Fly.io to process scheduled workflows
 
 ---
 
-### Phase 3: Report Templates (Jinja2)
+### Phase 3: Report Templates (Jinja2) ✅ COMPLETE
 
 **Goal**: Templated reports for Slack, Email, SMS using Jinja2.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Add Jinja2 dependency | TODO | `uv add jinja2` |
-| Add MJML dependency | TODO | `uv add mjml` (for responsive emails) |
-| Create `reports/` module structure | TODO | See below |
-| Implement report registry | TODO | Report definitions with SQL + template |
-| Daily CCW Summary (Slack) | TODO | Port from automated-reporting |
-| Daily CCW Summary (Email) | TODO | MJML template |
-| Alert template (SMS) | TODO | Simple text |
-| Slack Block Kit builder | TODO | Consider `blockkit` or `slackblocks` |
+| Add Jinja2 dependency | ✅ Done | `jinja2` |
+| Add MJML dependency | ✅ Done | `mjml` |
+| Create `reports/` module structure | ✅ Done | registry, renderer, runner |
+| Implement report registry | ✅ Done | Report dataclass with templates |
+| Daily CCW Summary (Slack) | ✅ Done | `daily_ccw.slack.j2` |
+| Daily CCW Summary (Email) | ✅ Done | `daily_ccw.email.mjml` |
+| Daily CCW Summary (SMS) | ✅ Done | `daily_ccw.sms.j2` |
+| Alert templates (all channels) | ✅ Done | slack, email, sms |
 
-**Module Structure**:
-```
-src/signalroom/reports/
-├── __init__.py
-├── registry.py              # Report definitions
-├── renderer.py              # Jinja2 + MJML rendering
-├── templates/
-│   ├── daily_ccw.slack.j2   # Slack markdown/blocks
-│   ├── daily_ccw.email.mjml # Responsive email
-│   └── alert.sms.j2         # SMS text
-└── queries/
-    └── daily_ccw.sql        # SQL for report data
-```
+**Templates Implemented**:
+- `daily_ccw.slack.j2` - Slack mrkdwn with affiliate breakdown
+- `daily_ccw.email.mjml` - Responsive HTML email
+- `daily_ccw.sms.j2` - Short summary (160 chars)
+- `alert.slack.j2` - Error/warning/info with icons
+- `alert.email.mjml` - Responsive HTML alert
+- `alert.sms.j2` - Alert text with level prefix
 
-**Report Definition Pattern**:
-```python
-@report(
-    name="daily_ccw",
-    schedule="0 7 * * *",  # 7am daily
-    channels=["slack", "email"],
-)
-def daily_ccw_report(date: str, advertiser_id: int = 1):
-    # Returns data dict for template rendering
-    ...
-```
+**Notification Channel Integration**: Pending (to be done one-by-one)
 
 ---
 

@@ -82,6 +82,78 @@ async def run_pipeline_activity(input: PipelineInput) -> PipelineResult:
         )
 
 
+@dataclass
+class ReportInput:
+    """Input for running a report."""
+
+    report_name: str
+    channel: str = "slack"
+    params: dict[str, Any] | None = None
+    send: bool = True
+
+
+@dataclass
+class ReportResult:
+    """Result from running a report."""
+
+    report_name: str
+    channel: str
+    content_length: int
+    success: bool
+    error_message: str | None = None
+
+
+@activity.defn
+async def run_report_activity(input: ReportInput) -> ReportResult:
+    """Run and optionally send a report as a Temporal activity.
+
+    Args:
+        input: Report configuration.
+
+    Returns:
+        Report result with status.
+    """
+    from signalroom.reports import run_report
+
+    log.info(
+        "report_activity_starting",
+        report=input.report_name,
+        channel=input.channel,
+        send=input.send,
+        activity_id=activity.info().activity_id,
+    )
+
+    try:
+        content = run_report(
+            report_name=input.report_name,
+            channel=input.channel,
+            params=input.params,
+            send=input.send,
+        )
+
+        return ReportResult(
+            report_name=input.report_name,
+            channel=input.channel,
+            content_length=len(content),
+            success=True,
+        )
+
+    except Exception as e:
+        log.error(
+            "report_activity_failed",
+            report=input.report_name,
+            error=str(e),
+            activity_id=activity.info().activity_id,
+        )
+        return ReportResult(
+            report_name=input.report_name,
+            channel=input.channel,
+            content_length=0,
+            success=False,
+            error_message=str(e),
+        )
+
+
 @activity.defn
 async def send_notification_activity(
     channel: str,  # "slack", "email", "sms"

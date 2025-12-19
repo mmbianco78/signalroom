@@ -10,7 +10,10 @@ with workflow.unsafe.imports_passed_through():
     from signalroom.temporal.activities import (
         PipelineInput,
         PipelineResult,
+        ReportInput,
+        ReportResult,
         run_pipeline_activity,
+        run_report_activity,
         send_notification_activity,
     )
     from signalroom.temporal.config import RETRY_POLICY
@@ -143,3 +146,50 @@ class ScheduledSyncWorkflow:
             )
 
         return results
+
+
+# Re-export for schedule setup
+ReportInput = ReportInput
+
+
+@workflow.defn
+class RunReportWorkflow:
+    """Workflow to run and send a report.
+
+    Can be scheduled to send daily reports.
+    """
+
+    @workflow.run
+    async def run(self, input: ReportInput) -> ReportResult:
+        """Execute the report workflow.
+
+        Args:
+            input: Report configuration.
+
+        Returns:
+            Report result.
+        """
+        workflow.logger.info(f"Running report: {input.report_name} via {input.channel}")
+
+        result = await workflow.execute_activity(
+            run_report_activity,
+            input,
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=RETRY_POLICY,
+        )
+
+        if not result.success:
+            workflow.logger.error(f"Report failed: {result.error_message}")
+            # Notify on failure
+            await workflow.execute_activity(
+                send_notification_activity,
+                args=[
+                    "slack",
+                    f"Report failed: {input.report_name}\nError: {result.error_message}",
+                    None,
+                ],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=RETRY_POLICY,
+            )
+
+        return result

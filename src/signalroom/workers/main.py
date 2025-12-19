@@ -9,9 +9,13 @@ from temporalio.worker import Worker
 
 from signalroom.common import get_logger, settings
 from signalroom.common.logging import configure_logging
-from signalroom.temporal.activities import run_pipeline_activity, send_notification_activity
+from signalroom.temporal.activities import (
+    run_pipeline_activity,
+    run_report_activity,
+    send_notification_activity,
+)
 from signalroom.temporal.config import get_temporal_client
-from signalroom.temporal.workflows import ScheduledSyncWorkflow, SyncSourceWorkflow
+from signalroom.temporal.workflows import RunReportWorkflow, ScheduledSyncWorkflow, SyncSourceWorkflow
 
 log = get_logger(__name__)
 
@@ -37,9 +41,11 @@ async def run_worker(task_queue: str) -> None:
         workflows=[
             SyncSourceWorkflow,
             ScheduledSyncWorkflow,
+            RunReportWorkflow,
         ],
         activities=[
             run_pipeline_activity,
+            run_report_activity,
             send_notification_activity,
         ],
     )
