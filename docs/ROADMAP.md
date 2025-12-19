@@ -170,3 +170,13 @@ ORDER BY conversions DESC;
 | Phase 4 (Hardening) | Ongoing | Production usage |
 
 **Target**: Automated daily syncs running within 1 week.
+
+---
+
+## Future Improvements
+
+See `docs/FUTURE_IMPROVEMENTS.md` for:
+- Additional Everflow API endpoints (advertisers, affiliates, offers)
+- Additional Redtrack filters (campaign_id, offer_id)
+- Robust affiliate mapping via offer URLs (replaces manual CSV mappings)
+- Redtrack object model documentation

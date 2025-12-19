@@ -46,3 +46,17 @@ Client-provided configuration and credentials reference.
 | 713 | ccw | CCW | Primary |
 | 713 | expungement | Expungement | Planned |
 | cti | TBD | TBD | Planned |
+
+---
+
+## Notes
+
+See `docs/FUTURE_IMPROVEMENTS.md` for structured notes on:
+- Additional Everflow API endpoints (advertisers, affiliates, offers)
+- Additional Redtrack API filters (campaign_id, offer_id, etc.)
+- Robust affiliate mapping via offer URLs and AFFID parameters
+- Redtrack object model (network, offer, source, lander, campaign)
+
+
+
+
