@@ -9,11 +9,16 @@
 - [x] Everflow/Redtrack credentials and API docs captured
 - [x] SQL query library created
 - [x] Core architecture working
+- [x] **Everflow source implemented** (444 rows, Dec 1-18)
+- [x] Documentation templates created
 
 ### In Progress
-- [ ] Everflow source implementation
-- [ ] Redtrack source implementation
+- [ ] Everflow Phase 1 sign-off (pending team QA)
+- [ ] Redtrack source implementation (Phase 2)
+
+### Pending
 - [ ] Temporal namespace activation
+- [ ] Hourly scheduling (to replace automated-reporting)
 
 ---
 
@@ -21,18 +26,18 @@
 
 ### Phase 1: Complete Data Sources (Priority: High)
 
-#### 1.1 Everflow Source
+#### 1.1 Everflow Source ✅ COMPLETE
 **Goal**: Pull affiliate conversion and revenue data
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Implement aggregated report endpoint | TODO | POST `/reporting/network/aggregated-data` |
-| Add date range and advertiser filtering | TODO | advertiser_id: 1=CCW, 2=EXP |
-| Fields: clicks, conversions, revenue, payout, profit | TODO | Group by date, affiliate |
-| Incremental loading by date | TODO | Track last_loaded_date |
-| Test with real API | TODO | Credentials in .env |
+| Implement entity table endpoint | DONE | POST `/v1/networks/reporting/entity/table` |
+| Add date range and advertiser filtering | DONE | advertiser_id: 1=CCW, 2=EXP |
+| Fields: clicks, conversions, revenue, payout, profit | DONE | Group by date, affiliate, advertiser |
+| Merge write disposition | DONE | Safe for re-runs |
+| Test with real API | DONE | 444 rows loaded (Dec 1-18) |
 
-**API Reference**: See `docs/INTEGRATIONS.md`
+**Details**: See `docs/EVERFLOW_IMPLEMENTATION.md`
 
 #### 1.2 Redtrack Source
 **Goal**: Pull ad spend data for internal affiliates

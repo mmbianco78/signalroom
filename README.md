@@ -49,12 +49,14 @@ Temporal Cluster ──> Workers ──> dlt Pipelines ──> Supabase (Postgre
 
 | Source | Description | Write Mode | Status |
 |--------|-------------|------------|--------|
-| `s3_exports` | CSV files from S3 bucket | append | Active |
-| `everflow` | Everflow reporting API | append | Planned |
-| `redtrack` | Redtrack reporting API | append | Planned |
-| `posthog` | PostHog analytics | append | Planned |
-| `mautic` | Mautic contacts/campaigns | merge | Planned |
-| `google_sheets` | Google Sheets data | replace | Planned |
+| `s3_exports` | CSV files from S3 (Sticky.io) | append | ✅ Active (650k rows) |
+| `everflow` | Affiliate conversions/revenue | merge | ✅ Active (444 rows) |
+| `redtrack` | Ad spend tracking | append | 🔜 Phase 2 |
+| `posthog` | PostHog analytics | append | Stubbed |
+| `mautic` | Mautic contacts/campaigns | merge | Stubbed |
+| `google_sheets` | Google Sheets data | replace | Stubbed |
+
+See `docs/SOURCES.md` for detailed schema and usage.
 
 ---
 
@@ -86,6 +88,20 @@ All configuration via environment variables. See `.env.example` for full list.
 | `TEMPORAL_ADDRESS` | Temporal server address | `localhost:7233` |
 | `TEMPORAL_NAMESPACE` | Namespace | `default` |
 | `TEMPORAL_TASK_QUEUE` | Task queue name | `api-tasks` |
+
+### Everflow
+
+| Variable | Description |
+|----------|-------------|
+| `EVERFLOW_API_KEY` | Everflow API key |
+| `EVERFLOW_BASE_URL` | Base URL (default: `https://api.eflow.team`) |
+
+### Redtrack
+
+| Variable | Description |
+|----------|-------------|
+| `REDTRACK_API_KEY` | Redtrack API key |
+| `REDTRACK_BASE_URL` | Base URL (default: `https://api.redtrack.io`) |
 
 ### Notifications (optional)
 
