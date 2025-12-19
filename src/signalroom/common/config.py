@@ -1,6 +1,7 @@
 """Application configuration using pydantic-settings."""
 
 from functools import lru_cache
+from urllib.parse import quote_plus
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,10 +29,11 @@ class Settings(BaseSettings):
     @property
     def postgres_connection_string(self) -> str:
         """Build Postgres connection string for dlt."""
-        password = self.supabase_db_password.get_secret_value()
+        password = quote_plus(self.supabase_db_password.get_secret_value())
         return (
             f"postgresql://{self.supabase_db_user}:{password}"
             f"@{self.supabase_db_host}:{self.supabase_db_port}/{self.supabase_db_name}"
+            f"?sslmode=require"
         )
 
     # -------------------------------------------------------------------------
@@ -40,6 +42,7 @@ class Settings(BaseSettings):
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
     temporal_task_queue: str = "api-tasks"
+    temporal_api_key: SecretStr = SecretStr("")  # For Temporal Cloud
     temporal_tls_cert_path: str | None = None
     temporal_tls_key_path: str | None = None
 
@@ -50,7 +53,17 @@ class Settings(BaseSettings):
     aws_secret_access_key: SecretStr = SecretStr("")
     aws_region: str = "us-east-1"
     s3_bucket_name: str = ""
-    s3_prefix: str = ""
+    s3_prefix: str = ""  # Single prefix (legacy)
+    s3_prefixes: str = ""  # Comma-separated prefixes
+
+    @property
+    def s3_prefix_list(self) -> list[str]:
+        """Get list of S3 prefixes to process."""
+        if self.s3_prefixes:
+            return [p.strip() for p in self.s3_prefixes.split(",") if p.strip()]
+        if self.s3_prefix:
+            return [self.s3_prefix]
+        return []
 
     # -------------------------------------------------------------------------
     # Notifications

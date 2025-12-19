@@ -29,11 +29,15 @@ def get_pipeline(source_name: str) -> Pipeline:
     Returns:
         Configured dlt pipeline.
     """
+    # Create Postgres destination with credentials
+    destination = dlt.destinations.postgres(
+        credentials=settings.postgres_connection_string,
+    )
+
     return dlt.pipeline(
         pipeline_name=source_name,
-        destination="postgres",
+        destination=destination,
         dataset_name=source_name,
-        credentials=settings.postgres_connection_string,
     )
 
 
@@ -93,20 +97,13 @@ def run_pipeline(
     # Extract useful info for logging/tracking
     result = {
         "pipeline_name": source_name,
-        "load_id": load_info.load_id,
+        "load_ids": load_info.loads_ids,
         "destination": str(load_info.destination_name),
         "dataset": load_info.dataset_name,
         "started_at": str(load_info.started_at),
         "finished_at": str(load_info.finished_at) if load_info.finished_at else None,
-        "row_counts": {},
         "has_failed_jobs": load_info.has_failed_jobs,
     }
-
-    # Get row counts per table
-    for package in load_info.load_packages:
-        for table_name, table_info in package.tables.items():
-            if not table_name.startswith("_"):  # Skip dlt internal tables
-                result["row_counts"][table_name] = table_info.get("row_count", 0)
 
     if load_info.has_failed_jobs:
         log.error("pipeline_failed", **result)

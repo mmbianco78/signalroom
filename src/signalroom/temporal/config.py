@@ -31,13 +31,23 @@ BROWSER_RETRY_POLICY = RetryPolicy(
 async def get_temporal_client() -> Client:
     """Create and return a Temporal client.
 
-    Handles both local development (no TLS) and Temporal Cloud (with TLS).
+    Handles both local development (no TLS) and Temporal Cloud (with API key or mTLS).
 
     Returns:
         Connected Temporal client.
     """
-    # Check if TLS is configured (Temporal Cloud)
-    tls_config = None
+    api_key = settings.temporal_api_key.get_secret_value()
+
+    # Temporal Cloud with API key (preferred)
+    if api_key:
+        return await Client.connect(
+            settings.temporal_address,
+            namespace=settings.temporal_namespace,
+            api_key=api_key,
+            tls=True,  # Temporal Cloud requires TLS
+        )
+
+    # Temporal Cloud with mTLS certificates (legacy)
     if settings.temporal_tls_cert_path and settings.temporal_tls_key_path:
         with open(settings.temporal_tls_cert_path, "rb") as f:
             client_cert = f.read()
@@ -49,8 +59,14 @@ async def get_temporal_client() -> Client:
             client_private_key=client_key,
         )
 
+        return await Client.connect(
+            settings.temporal_address,
+            namespace=settings.temporal_namespace,
+            tls=tls_config,
+        )
+
+    # Local development (no TLS)
     return await Client.connect(
         settings.temporal_address,
         namespace=settings.temporal_namespace,
-        tls=tls_config,
     )
