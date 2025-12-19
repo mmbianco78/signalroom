@@ -222,6 +222,16 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 **Branch**: `phase-4-temporal-scheduling`
 
+**Goal**: Replace `automated-reporting` launchd jobs with Temporal-managed schedules.
+
+### Current System to Replace
+
+The `automated-reporting` project uses macOS launchd with:
+- **Hourly schedule**: 7am-11pm ET (17 runs/day)
+- **Intraday data**: Fetches current day, not yesterday
+- **7am special**: Sends previous day final snapshot before current day
+- **iMessage delivery**: To phone numbers and group chats
+
 ### 4.1 Verify Temporal Cloud Connection
 
 - [ ] Test connection:
@@ -239,13 +249,35 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 ### 4.2 Create Scheduled Workflows
 
 - [ ] Update `src/signalroom/temporal/workflows.py`:
-  - [ ] `DailySyncWorkflow` - orchestrates all daily syncs
-  - [ ] Sequence: S3 → Everflow → Redtrack → Notify
+  - [ ] `HourlySyncWorkflow` - intraday data sync + report
+  - [ ] `DailyBackfillWorkflow` - previous day final sync
+  - [ ] `ReportingWorkflow` - generate and send report
 
-- [ ] Create schedule via CLI:
+- [ ] Workflow logic:
+  ```
+  HourlySyncWorkflow (runs hourly 7am-11pm ET):
+    1. Sync Everflow (today's date)
+    2. Sync Redtrack (today's date)
+    3. Generate merged report
+    4. Send to Slack
+
+  At 7am only:
+    1. Run DailyBackfillWorkflow (yesterday)
+    2. Send "Previous Day Final" report
+    3. Then run normal hourly sync
+  ```
+
+- [ ] Create schedules via CLI:
   ```bash
+  # Hourly sync (7am-11pm ET = 12:00-04:00 UTC next day)
   python scripts/create_schedule.py \
-    --workflow DailySyncWorkflow \
+    --workflow HourlySyncWorkflow \
+    --cron "0 7-23 * * *" \
+    --timezone "America/New_York"
+
+  # Daily backfill (6am ET)
+  python scripts/create_schedule.py \
+    --workflow DailyBackfillWorkflow \
     --cron "0 6 * * *" \
     --timezone "America/New_York"
   ```
@@ -256,6 +288,20 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
   ```
   SLACK_BOT_TOKEN=xoxb-...
   SLACK_CHANNEL_ID=C...
+  ```
+
+- [ ] Implement report formatter matching current iMessage format:
+  ```
+  Daily Reporting Snapshot (2025-12-19)
+
+  CCW
+  • Conversions: 435
+  • Cost: $8,855
+  • CPA: $20.36
+
+  Top Affiliates:
+  - G2 - Meta: 313 @ $18.50
+  - Blue Bench: 135 @ $22.00
   ```
 
 - [ ] Test notification:
@@ -270,25 +316,31 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 - [ ] Trigger manual workflow run:
   ```bash
-  python scripts/trigger_workflow.py DailySyncWorkflow --wait
+  python scripts/trigger_workflow.py HourlySyncWorkflow --wait
   ```
 
-- [ ] Verify in Temporal UI (if available)
+- [ ] Verify intraday data updates correctly
 
-- [ ] Verify data loaded for current date
+- [ ] Verify report matches automated-reporting output
+
+- [ ] Test 7am previous-day logic
 
 ### 4.5 Documentation
 
 - [ ] Update `docs/OPERATIONS.md` with schedule info
 - [ ] Document how to pause/resume schedules
+- [ ] Migration guide from automated-reporting
 - [ ] Add troubleshooting section
 
 ### 4.6 Sign-off Checklist
 
 - [ ] Temporal Cloud connection working
-- [ ] Manual workflow trigger succeeds
-- [ ] Schedule created and visible
-- [ ] Notifications sending
+- [ ] Hourly workflow runs correctly
+- [ ] Intraday data updates in Supabase
+- [ ] Reports match automated-reporting format
+- [ ] Previous day snapshot at 7am works
+- [ ] Notifications sending to Slack
+- [ ] Ready to deprecate automated-reporting
 - [ ] User confirmation received
 
 ---

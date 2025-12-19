@@ -103,29 +103,53 @@ python -c "from signalroom.pipelines.runner import run_pipeline; \
 
 ## Scheduling Strategy
 
-### Planned Schedule (Phase 4)
+### Current System (automated-reporting)
+
+The existing `automated-reporting` project runs **hourly** from 7am-11pm ET:
+
+| Hour | Runs | Content |
+|------|------|---------|
+| 7am | 1 | Previous day final + Current day start |
+| 8am-11pm | 16 | Current day intraday updates |
+
+**Total: 17 runs per day**
+
+### SignalRoom Target Schedule (Phase 4)
+
+To replace `automated-reporting`, SignalRoom must support:
 
 | Schedule | Time | Date Range | Purpose |
 |----------|------|------------|---------|
-| **Daily sync** | 6:00 AM ET | Yesterday | Primary data ingestion |
-| **Weekly catchup** | Sunday 7:00 AM ET | Last 7 days | Safety net for missed syncs |
+| **Hourly sync** | 7am-11pm ET | Today (intraday) | Real-time reporting |
+| **7am special** | 7:00 AM ET | Yesterday + Today | Previous day final snapshot |
+| **Daily backfill** | 6:00 AM ET | Yesterday | Ensure completeness |
+
+### Key Requirements
+
+1. **Intraday Data**: Everflow API returns same-day data (not just historical)
+2. **Hourly Refresh**: Dashboard/reports update throughout the day
+3. **Merge with Redtrack**: Cost data from Redtrack for internal affiliates
+4. **Previous Day Report**: Final snapshot sent at 7am before current day starts
 
 ### Default Behavior
 
-When no dates are specified, the pipeline automatically fetches **yesterday's data**:
-
 ```python
-# Defaults to yesterday
+# Current day (intraday) - for hourly syncs
+run_pipeline('everflow', source_kwargs={
+    'start_date': '2025-12-19',  # today
+    'end_date': '2025-12-19'
+})
+
+# If no dates specified, defaults to yesterday (for backfill)
 run_pipeline('everflow')
-# Equivalent to: start_date=yesterday, end_date=yesterday
 ```
 
 ### Write Disposition: Merge
 
 The pipeline uses **merge** (upsert) mode with primary key `(date, affiliate_id, advertiser_id)`:
 - Re-running the same date range updates existing records
+- Safe for hourly intraday updates (overwrites with latest)
 - No duplicates created
-- Safe to backfill or re-sync any date range
 
 ---
 
