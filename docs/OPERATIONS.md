@@ -10,6 +10,9 @@
 | View logs | `make logs` |
 | Run pipeline manually | `python scripts/run_pipeline.py s3_exports` |
 | Trigger via Temporal | `python scripts/trigger_workflow.py s3_exports -w` |
+| Test report | `python -c "from signalroom.reports import run_report; print(run_report('daily_ccw'))"` |
+| Setup schedules | `python scripts/setup_schedules.py` |
+| Test Temporal connection | `python scripts/test_temporal_connection.py` |
 | Open Temporal UI | http://localhost:8080 |
 
 ---
@@ -273,19 +276,43 @@ psql "postgresql://temporal:temporal@localhost:5433/temporal"
 
 ## Scheduled Syncs
 
-**Note**: Cron scheduling is not yet implemented. See ROADMAP.md.
+Schedules are configured in **Temporal Cloud** (namespace: signalroom-713.nzg5u).
 
-Current options:
-1. External cron calling `scripts/trigger_workflow.py`
-2. Manual triggers
-3. Implement Temporal schedules (future)
+### Active Schedules
 
-### Example: External cron
+| Schedule ID | When | What |
+|-------------|------|------|
+| `hourly-sync-everflow-redtrack` | Hourly 7am-11pm ET | Sync Everflow + Redtrack |
+| `daily-sync-s3` | Daily 6am ET | Sync S3 exports |
+| `daily-report-ccw` | Daily 7am ET | Send CCW report to Slack |
 
-```cron
-# Run s3_exports every day at 2am
-0 2 * * * cd /path/to/signalroom && .venv/bin/python scripts/trigger_workflow.py s3_exports
+### Managing Schedules
+
+```bash
+# View schedules in Temporal Cloud UI
+# https://cloud.temporal.io/namespaces/signalroom-713.nzg5u/schedules
+
+# Create/update schedules
+python scripts/setup_schedules.py
+
+# Delete all schedules
+python scripts/setup_schedules.py --delete
+
+# List schedules via script
+python -c "
+import asyncio
+from signalroom.temporal.config import get_temporal_client
+async def main():
+    client = await get_temporal_client()
+    async for s in await client.list_schedules():
+        print(f'{s.id}')
+asyncio.run(main())
+"
 ```
+
+### Note on Worker Requirement
+
+Schedules are active in Temporal Cloud but require a **running worker** to process workflows. See Phase 4 (Fly.io) in ROADMAP.md.
 
 ---
 
@@ -309,6 +336,56 @@ SLACK_CHANNEL_ID=C0123456789
 from signalroom.notifications import send_slack
 import asyncio
 asyncio.run(send_slack("Test message"))
+```
+
+---
+
+## Reports
+
+Reports are templated using Jinja2 (Slack/SMS) and MJML (responsive emails).
+
+### Available Reports
+
+| Report | Channels | Description |
+|--------|----------|-------------|
+| `daily_ccw` | slack, email, sms | Daily CCW performance summary |
+| `alert` | slack, email, sms | Error/warning/info alerts |
+
+### Running Reports Manually
+
+```bash
+# Run report and print output (no send)
+python -c "
+from signalroom.reports import run_report
+print(run_report('daily_ccw', channel='slack'))
+"
+
+# Run report for specific date
+python -c "
+from signalroom.reports import run_report
+print(run_report('daily_ccw', params={'date': '2025-12-18'}))
+"
+
+# Render an alert
+python -c "
+from signalroom.reports import render_alert
+print(render_alert('Test Alert', 'This is a test', level='warning'))
+"
+```
+
+### Template Locations
+
+```
+src/signalroom/reports/
+├── templates/
+│   ├── daily_ccw.slack.j2    # Slack mrkdwn
+│   ├── daily_ccw.email.mjml  # Responsive HTML email
+│   ├── daily_ccw.sms.j2      # Short SMS
+│   ├── alert.slack.j2        # Alert for Slack
+│   ├── alert.email.mjml      # Alert email
+│   └── alert.sms.j2          # Alert SMS
+└── queries/
+    └── daily_ccw.sql         # SQL for report data
 ```
 
 ---

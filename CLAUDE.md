@@ -38,6 +38,14 @@ make ci                   # Run all checks (lint + typecheck + test)
 python scripts/run_pipeline.py s3_exports          # Run a pipeline directly
 python scripts/trigger_workflow.py s3_exports -w   # Trigger via Temporal (--wait)
 
+# Reports
+python -c "from signalroom.reports import run_report; print(run_report('daily_ccw'))"
+
+# Temporal Cloud
+python scripts/test_temporal_connection.py         # Verify connection
+python scripts/setup_schedules.py                  # Create/update schedules
+python scripts/setup_schedules.py --delete         # Delete all schedules
+
 # Temporal UI
 make temporal-ui          # Open http://localhost:8080
 ```
@@ -78,6 +86,7 @@ make temporal-ui          # Open http://localhost:8080
 | **Pipelines** | `src/signalroom/pipelines/` | dlt pipeline runner, source registry |
 | **Temporal** | `src/signalroom/temporal/` | Workflows (orchestration) and Activities (units of work) |
 | **Workers** | `src/signalroom/workers/` | Temporal worker entry points |
+| **Reports** | `src/signalroom/reports/` | Jinja2/MJML templated reports (Slack, Email, SMS) |
 | **Notifications** | `src/signalroom/notifications/` | Slack, Email (Resend), SMS (Twilio) |
 | **Common** | `src/signalroom/common/` | Config, logging, client definitions |
 
@@ -120,6 +129,9 @@ signalroom/
 │   ├── pipelines/         # dlt pipeline runner
 │   ├── temporal/          # Workflows and Activities
 │   ├── workers/           # Worker entry points
+│   ├── reports/           # Jinja2/MJML templated reports
+│   │   ├── templates/     # .j2 and .mjml templates
+│   │   └── queries/       # SQL for report data
 │   ├── notifications/     # Slack, Email, SMS
 │   └── common/            # Config, logging, clients
 ├── scripts/               # CLI tools for manual runs
@@ -186,10 +198,17 @@ Key settings in `src/signalroom/common/config.py`:
 **Workflows** (pure orchestration, no I/O):
 - `SyncSourceWorkflow` - sync one source, optionally notify
 - `ScheduledSyncWorkflow` - sync multiple sources sequentially
+- `RunReportWorkflow` - run and send a templated report
 
 **Activities** (retryable work):
 - `run_pipeline_activity` - runs dlt pipeline
+- `run_report_activity` - renders and sends a report
 - `send_notification_activity` - sends Slack/email/SMS
+
+**Active Schedules** (Temporal Cloud - signalroom-713.nzg5u):
+- `hourly-sync-everflow-redtrack` - Hourly 7am-11pm ET
+- `daily-sync-s3` - Daily 6am ET
+- `daily-report-ccw` - Daily 7am ET
 
 **Retry Policy** (defined in `temporal/config.py`):
 - 5 attempts, exponential backoff (1s → 5min)

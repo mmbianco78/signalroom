@@ -68,9 +68,18 @@ Steps: For each source → run pipeline activity
 Output: Dict of source → result
 ```
 
+**RunReportWorkflow**: Runs and sends a templated report.
+```
+Input: report_name, channel, send flag
+Steps: 1. Run report activity → 2. Notify on failure
+Output: ReportResult with content length
+```
+
 ### 2. Temporal Activities (`src/signalroom/temporal/activities.py`)
 
 **run_pipeline_activity**: Executes a dlt pipeline. This is where actual data movement happens.
+
+**run_report_activity**: Renders a report template and optionally sends it.
 
 **send_notification_activity**: Sends alerts via Slack, Email, or SMS.
 
@@ -175,6 +184,12 @@ src/signalroom/
 │   └── config.py     # Retry policies, client setup
 ├── workers/          # Worker entry points
 │   └── main.py       # Temporal worker process
+├── reports/          # Templated reports
+│   ├── registry.py   # Report definitions
+│   ├── renderer.py   # Jinja2 + MJML rendering
+│   ├── runner.py     # Execute reports
+│   ├── templates/    # .j2 and .mjml templates
+│   └── queries/      # SQL for report data
 └── notifications/    # Alert channels
     └── channels.py   # Slack, Email, SMS
 ```
