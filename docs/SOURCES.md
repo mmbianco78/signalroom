@@ -5,7 +5,7 @@
 | Source | Status | Incremental | State Tracking | Client Tagging | Tests |
 |--------|--------|-------------|----------------|----------------|-------|
 | s3_exports | ✅ Implemented | No | Via PK dedup | ✅ Yes | No |
-| everflow | Stubbed | - | - | - | No |
+| everflow | ✅ Implemented | No | Via PK merge | ✅ Yes | No |
 | redtrack | Stubbed | - | - | - | No |
 | posthog | Implemented | Yes | No | No | No |
 | mautic | Implemented | No | No | No | No |
@@ -100,19 +100,86 @@ ORDER BY _file_date;
 
 **Path**: `src/signalroom/sources/everflow/__init__.py`
 
-**Purpose**: Pull conversion and click data from Everflow affiliate tracking.
+**Purpose**: Pull affiliate conversion and revenue data from Everflow Network API.
 
-**Status**: Stubbed - API structure defined but not implemented.
-
-**Expected Resources**:
+**Resources**:
 | Resource | Write Mode | Primary Key | Description |
 |----------|------------|-------------|-------------|
-| conversions | append | conversion_id | Affiliate conversions |
-| clicks | append | click_id | Click events |
+| daily_stats | merge | date, affiliate_id, advertiser_id | Daily affiliate performance |
+
+**Current Implementation**:
+- Uses Entity Table API endpoint (`/v1/networks/reporting/entity/table`)
+- Groups data by date, affiliate, and advertiser
+- Adds metadata: `_client_id`, `_loaded_at`
+- Merge mode allows re-running for same date range (updates existing)
+- Client-side advertiser filtering (API filter unreliable)
+
+**Schema Details (daily_stats)**:
+| Column | Type | Description |
+|--------|------|-------------|
+| date | text | Report date (YYYY-MM-DD) |
+| affiliate_id | int | Everflow affiliate ID |
+| affiliate_label | text | Affiliate name |
+| advertiser_id | int | Advertiser/brand ID |
+| advertiser_label | text | Advertiser name (CCW, EXP) |
+| clicks | int | Total click count |
+| conversions | int | Conversion count |
+| revenue | float | Gross revenue |
+| payout | float | Affiliate payout |
+| profit | float | Net profit (revenue - payout) |
+| _client_id | text | Client identifier |
+| _loaded_at | text | Load timestamp |
+
+**Advertiser IDs**:
+| ID | Label | Description |
+|----|-------|-------------|
+| 1 | CCW | Concealed Carry |
+| 2 | EXP | Expungement |
+
+**Loaded Data (December 2025)**:
+| Advertiser | Rows | Conversions | Payout |
+|------------|------|-------------|--------|
+| CCW | 378 | 4,592 | $124,340 |
+| EXP | 14 | 1 | $0 |
+| Others | 52 | 2 | $293 |
 
 **Configuration**:
 ```
 EVERFLOW_API_KEY=
+EVERFLOW_BASE_URL=https://api.eflow.team
+```
+
+**Usage**:
+```bash
+# Run for date range (all advertisers)
+python -c "from signalroom.pipelines.runner import run_pipeline; print(run_pipeline('everflow', source_kwargs={'start_date': '2025-12-01', 'end_date': '2025-12-18'}))"
+
+# Run for CCW only
+python -c "from signalroom.pipelines.runner import run_pipeline; print(run_pipeline('everflow', source_kwargs={'start_date': '2025-12-17', 'end_date': '2025-12-18', 'advertiser_id': 1}))"
+```
+
+**Example Queries**:
+```sql
+-- Daily conversions by advertiser
+SELECT
+    date,
+    advertiser_label,
+    SUM(conversions) as conversions,
+    ROUND(SUM(payout)::numeric, 2) as payout
+FROM everflow.daily_stats
+GROUP BY date, advertiser_label
+ORDER BY date DESC, conversions DESC;
+
+-- Top affiliates by conversion
+SELECT
+    affiliate_label,
+    SUM(conversions) as total_conversions,
+    ROUND(SUM(payout)::numeric, 2) as total_payout
+FROM everflow.daily_stats
+WHERE advertiser_label = 'CCW'
+GROUP BY affiliate_label
+ORDER BY total_conversions DESC
+LIMIT 10;
 ```
 
 **API Reference**: https://developers.everflow.io/

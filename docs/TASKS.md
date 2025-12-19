@@ -12,76 +12,64 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 ---
 
-## Phase 1: Everflow Source
+## Phase 1: Everflow Source ✅ COMPLETE
 
 **Branch**: `phase-1-everflow`
 
 ### 1.1 Implementation
 
-- [ ] Update `src/signalroom/sources/everflow/__init__.py`
-  - [ ] Create `EverflowClient` class with auth header
-  - [ ] Implement `aggregated_report()` method (POST)
-  - [ ] Add date range parameters (start_date, end_date)
-  - [ ] Add advertiser_id filter (1=CCW, 2=EXP)
-  - [ ] Add timezone parameter (default: America/New_York)
+- [x] Update `src/signalroom/sources/everflow/__init__.py`
+  - [x] Create `EverflowClient` class with auth header
+  - [x] Implement `entity_table()` method (POST) - Note: used entity table endpoint instead of aggregated
+  - [x] Add date range parameters (start_date, end_date)
+  - [x] Add advertiser_id filter (1=CCW, 2=EXP) with client-side filtering
+  - [x] Add timezone_id parameter (80 = America/New_York)
 
-- [ ] Create dlt source and resources
-  - [ ] `@dlt.source(name="everflow")`
-  - [ ] `@dlt.resource` for `daily_stats` (append mode)
-  - [ ] Primary key: `date` + `affiliate_id` + `advertiser_id`
-  - [ ] Add `_client_id` column
+- [x] Create dlt source and resources
+  - [x] `@dlt.source(name="everflow")`
+  - [x] `@dlt.resource` for `daily_stats` (merge mode)
+  - [x] Primary key: `date` + `affiliate_id` + `advertiser_id`
+  - [x] Add `_client_id` column
 
-- [ ] Fields to extract:
-  - [ ] date
-  - [ ] affiliate_id, affiliate_label
-  - [ ] advertiser_id, advertiser_label
-  - [ ] clicks
-  - [ ] conversions
-  - [ ] revenue
-  - [ ] payout
-  - [ ] profit
+- [x] Fields to extract:
+  - [x] date
+  - [x] affiliate_id, affiliate_label
+  - [x] advertiser_id, advertiser_label
+  - [x] clicks
+  - [x] conversions
+  - [x] revenue
+  - [x] payout
+  - [x] profit
 
 ### 1.2 Configuration
 
-- [ ] Verify settings in `config.py`:
-  - [ ] `everflow_api_key`
-  - [ ] `everflow_base_url`
-  - [ ] `everflow_agg_path`
+- [x] Verify settings in `config.py`:
+  - [x] `everflow_api_key`
+  - [x] `everflow_base_url`
+  - [x] `everflow_agg_path` (not used - using entity table endpoint)
 
-- [ ] Update `.env.example` if needed
+- [x] Update `.env.example` if needed
 
 ### 1.3 Testing
 
-- [ ] Manual API test:
-  ```bash
-  curl -X POST "https://api.eflow.team/reporting/network/aggregated-data" \
-    -H "X-Eflow-API-Key: $EVERFLOW_API_KEY" \
-    -H "Content-Type: application/json" \
-    -d '{"date_from":"2025-12-01","date_to":"2025-12-18","timezone":"America/New_York","grouping":["date"],"columns":["clicks","conversions","revenue","payout","profit"]}'
-  ```
-
-- [ ] Run pipeline test:
-  ```bash
-  python -c "from signalroom.pipelines.runner import run_pipeline; print(run_pipeline('everflow', source_kwargs={'start_date': '2025-12-17', 'end_date': '2025-12-18', 'advertiser_id': 1}))"
-  ```
-
-- [ ] Verify data in Supabase:
-  ```sql
-  SELECT * FROM everflow.daily_stats LIMIT 10;
-  SELECT COUNT(*), SUM(conversions), SUM(revenue) FROM everflow.daily_stats;
-  ```
+- [x] Manual API test: Entity table endpoint returns 200 OK
+- [x] Run pipeline test: 444 rows loaded (Dec 1-18)
+- [x] Verify data in Supabase:
+  - CCW: 378 rows, 4,592 conversions, $124,340 payout
+  - EXP: 14 rows, 1 conversion
+  - Others: 52 rows, 2 conversions
 
 ### 1.4 Documentation
 
-- [ ] Update `docs/SOURCES.md` - Everflow section
-- [ ] Add example queries to `docs/QUERIES.sql`
+- [x] Update `docs/SOURCES.md` - Everflow section
+- [ ] Add example queries to `docs/QUERIES.sql` (deferred)
 
 ### 1.5 Sign-off Checklist
 
-- [ ] API returns data
-- [ ] Pipeline runs without error
-- [ ] Data visible in Supabase
-- [ ] Fields match expected schema
+- [x] API returns data
+- [x] Pipeline runs without error
+- [x] Data visible in Supabase
+- [x] Fields match expected schema
 - [ ] User confirmation received
 
 ---
@@ -399,7 +387,7 @@ psql "$DATABASE_URL" -c "SELECT 'everflow', COUNT(*) FROM everflow.daily_stats U
 
 | Phase | Branch | Status | Merged |
 |-------|--------|--------|--------|
-| 1. Everflow | phase-1-everflow | Not Started | |
+| 1. Everflow | phase-1-everflow | ✅ Complete | Pending merge |
 | 2. Redtrack | phase-2-redtrack | Not Started | |
 | 3. Affiliate Merge | phase-3-affiliate-merge | Not Started | |
 | 4. Temporal Scheduling | phase-4-temporal-scheduling | Not Started | |
