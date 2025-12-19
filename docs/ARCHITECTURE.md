@@ -20,19 +20,17 @@ SignalRoom is a Marketing Data Platform that ingests data from various sources i
 │  • Task queues for worker routing                                   │
 └─────────────────────────────────────────────────────────────────────┘
                                     │
-                    ┌───────────────┴───────────────┐
-                    ▼                               ▼
-        ┌───────────────────┐           ┌───────────────────┐
-        │    API Worker     │           │  Browser Worker   │
-        │  (api-tasks queue)│           │ (browser-tasks)   │
-        ├───────────────────┤           ├───────────────────┤
-        │ • Fast operations │           │ • Headless Chrome │
-        │ • API calls       │           │ • Slow/brittle    │
-        │ • S3 file reads   │           │ • Screenshot/scrape│
-        │ • CSV parsing     │           │ • Login flows     │
-        └─────────┬─────────┘           └─────────┬─────────┘
-                  │                               │
-                  └───────────────┬───────────────┘
+                                    ▼
+                        ┌───────────────────┐
+                        │    API Worker     │
+                        │  (api-tasks queue)│
+                        ├───────────────────┤
+                        │ • API calls       │
+                        │ • S3 file reads   │
+                        │ • CSV parsing     │
+                        │ • Report rendering│
+                        └─────────┬─────────┘
+                                  │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         DLT PIPELINE                                 │
@@ -208,10 +206,11 @@ Key settings:
 
 | Queue | Worker | Use Case |
 |-------|--------|----------|
-| api-tasks | worker | Fast operations: API calls, file processing |
-| browser-tasks | worker-browser | Slow operations: headless browser automation |
+| api-tasks | worker | API calls, file processing, reports |
 
 ## Deployment Topology
+
+### Local Development (Docker Compose)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -221,15 +220,26 @@ Key settings:
 │  temporal-ui     │ Web UI for visibility (port 8080)            │
 │  temporal-db     │ Postgres for Temporal's internal state       │
 │  worker          │ API worker (polls api-tasks queue)           │
-│  worker-browser  │ Browser worker (optional, uncomment)         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Production (Fly.io + Temporal Cloud)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Fly.io                                       │
+├─────────────────────────────────────────────────────────────────┤
+│  signalroom-worker  │ API worker container (247MB)              │
+│  Region: iad        │ US East (closest to Supabase/Temporal)    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                  External Services                               │
 ├─────────────────────────────────────────────────────────────────┤
-│  Supabase        │ Data destination (your Postgres)             │
-│  S3              │ Source for CSV exports                       │
-│  Slack/Resend    │ Notifications                                │
+│  Temporal Cloud  │ signalroom-713.nzg5u (ap-northeast-1)        │
+│  Supabase        │ foieoinshqlescyocbld (us-east-1 pooler)      │
+│  S3              │ sticky-713-data-repo                         │
+│  Slack           │ #reporting channel                           │
 └─────────────────────────────────────────────────────────────────┘
 ```

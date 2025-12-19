@@ -4,6 +4,11 @@
 import argparse
 import sys
 
+# Load .env before importing signalroom (settings won't auto-load it)
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from signalroom.common import get_logger
 from signalroom.common.logging import configure_logging
 from signalroom.pipelines import run_pipeline

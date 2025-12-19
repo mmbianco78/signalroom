@@ -61,10 +61,9 @@ All sources needed for daily reporting are implemented.
 ```
 hourly-sync-everflow-redtrack  - Hourly 7am-11pm ET: Sync Everflow + Redtrack
 daily-sync-s3                  - Daily 6am ET: Sync S3 exports
-daily-report-ccw               - Daily 7am ET: Send CCW report to Slack
 ```
 
-**Pending**: Start worker on Fly.io to process scheduled workflows
+**Note**: Report schedules are currently disabled while we validate data quality.
 
 ---
 
@@ -95,53 +94,43 @@ daily-report-ccw               - Daily 7am ET: Send CCW report to Slack
 
 ---
 
-### Phase 4: Deployment (Fly.io)
+### Phase 4: Deployment (Fly.io) ✅ COMPLETE
 
 **Goal**: Run Temporal worker in production.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Create Fly.io account/app | TODO | `fly launch` |
-| Configure secrets | TODO | API keys, Supabase, Temporal |
-| Deploy worker container | TODO | `fly deploy` |
-| Set up health checks | TODO | Worker heartbeat |
-| Configure auto-restart | TODO | On failure |
-| Test end-to-end | TODO | Trigger workflow, verify report |
+| Create Fly.io account/app | ✅ Done | `signalroom-worker` |
+| Configure secrets | ✅ Done | All API keys, Supabase pooler, Temporal Cloud |
+| Deploy worker container | ✅ Done | 247MB image (no Playwright) |
+| Worker connects to Temporal | ✅ Done | signalroom-713.nzg5u namespace |
+| Test end-to-end sync | ✅ Done | Everflow + Redtrack syncing successfully |
+| Test report via Temporal | ✅ Done | test_sync report sent to Slack |
 
-**Fly.io Config** (`fly.toml`):
-```toml
-app = "signalroom-worker"
-primary_region = "iad"  # US East
+**Production URLs**:
+- Fly.io: https://fly.io/apps/signalroom-worker
+- Temporal Cloud: https://cloud.temporal.io/namespaces/signalroom-713.nzg5u/workflows
 
-[build]
-  dockerfile = "Dockerfile"
-
-[env]
-  TEMPORAL_NAMESPACE = "signalroom-713.nzg5u"
-
-[[services]]
-  internal_port = 8080
-  protocol = "tcp"
-
-  [[services.http_checks]]
-    interval = "15s"
-    timeout = "2s"
-    path = "/health"
-```
+**Key Configuration**:
+- Supabase connection via pooler (port 6543)
+- User format: `postgres.{project_ref}` (not just `postgres`)
+- Secrets with special characters must be set via Fly.io dashboard (not CLI)
 
 ---
 
-### Phase 5: Go-Live
+### Phase 5: Go-Live ← **IN PROGRESS**
 
 **Goal**: Switch from automated-reporting to SignalRoom.
 
 | Task | Status | Notes |
 |------|--------|-------|
+| Data syncs running in production | ✅ Done | Everflow + Redtrack hourly, S3 daily |
+| Validate data quality | 🔄 In Progress | Comparing with automated-reporting |
+| Enable report schedules | TODO | After data validation |
 | Run parallel for 1 week | TODO | Both systems sending reports |
 | Compare outputs | TODO | Verify data matches |
 | Disable automated-reporting | TODO | After validation |
 | Monitor for issues | TODO | First week in production |
-| Document runbook | TODO | How to debug/restart |
 
 ---
 
@@ -191,9 +180,12 @@ See `docs/FUTURE_IMPROVEMENTS.md` for:
 1. ~~**Temporal namespace activation**~~ ✅ Active
 2. ~~**Add Jinja2 + report module skeleton**~~ ✅ Complete
 3. ~~**Port daily CCW report logic**~~ ✅ Complete
-4. **Fly.io setup** - Account, app, secrets ← **NEXT**
-5. **Deploy worker** - Start processing scheduled workflows
-6. **End-to-end test** - Schedule triggers → Worker processes → Slack message
+4. ~~**Fly.io setup**~~ ✅ Complete
+5. ~~**Deploy worker**~~ ✅ Complete
+6. ~~**End-to-end test**~~ ✅ Complete
+7. **Validate data quality** ← **CURRENT**
+8. **Enable report schedules** - After validation
+9. **Parallel run with automated-reporting** - 1 week comparison
 
 ---
 

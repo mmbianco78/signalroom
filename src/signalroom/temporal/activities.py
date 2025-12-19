@@ -124,12 +124,20 @@ async def run_report_activity(input: ReportInput) -> ReportResult:
     )
 
     try:
+        # Render report without sending (we handle send separately to avoid asyncio.run nesting)
         content = run_report(
             report_name=input.report_name,
             channel=input.channel,
             params=input.params,
-            send=input.send,
+            send=False,
         )
+
+        # Send via the appropriate channel if requested
+        if input.send and content:
+            from signalroom.notifications import send_slack
+
+            if input.channel == "slack":
+                await send_slack(content)
 
         return ReportResult(
             report_name=input.report_name,

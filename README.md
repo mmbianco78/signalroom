@@ -26,10 +26,9 @@ Temporal UI: http://localhost:8080
 ## Architecture
 
 ```
-Temporal Cluster ──> Workers ──> dlt Pipelines ──> Supabase (Postgres)
+Temporal Cluster ──> Worker ──> dlt Pipelines ──> Supabase (Postgres)
      │                  │
-     │                  ├── API Worker (fast: API calls, file processing)
-     │                  └── Browser Worker (slow: headless automation)
+     │                  └── API Worker (API calls, file processing, reports)
      │
      └── Schedules, retries, visibility, durability
 ```
@@ -50,8 +49,8 @@ Temporal Cluster ──> Workers ──> dlt Pipelines ──> Supabase (Postgre
 | Source | Description | Write Mode | Status |
 |--------|-------------|------------|--------|
 | `s3_exports` | CSV files from S3 (Sticky.io) | append | ✅ Active (650k rows) |
-| `everflow` | Affiliate conversions/revenue | merge | ✅ Active (444 rows) |
-| `redtrack` | Ad spend tracking | append | 🔜 Phase 2 |
+| `everflow` | Affiliate conversions/revenue | merge | ✅ Active |
+| `redtrack` | Ad spend tracking | merge | ✅ Active |
 | `posthog` | PostHog analytics | append | Stubbed |
 | `mautic` | Mautic contacts/campaigns | merge | Stubbed |
 | `google_sheets` | Google Sheets data | replace | Stubbed |
@@ -199,9 +198,23 @@ Data is tagged with `client_id` for grouping. No multi-tenancy.
 # Local dev
 docker compose up --build
 
-# Production builds
+# Production build
 docker build --target prod -t signalroom:prod .
-docker build --target prod-browser -t signalroom:browser .
+```
+
+## Production (Fly.io)
+
+Worker runs on Fly.io, connected to Temporal Cloud.
+
+```bash
+# Deploy
+fly deploy
+
+# View logs
+fly logs
+
+# Check status
+fly status
 ```
 
 ---

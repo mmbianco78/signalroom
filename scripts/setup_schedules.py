@@ -18,6 +18,11 @@ import sys
 from datetime import timedelta
 from typing import Any
 
+# Load .env before importing signalroom (settings won't auto-load it)
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from temporalio.client import (
     Schedule,
     ScheduleActionStartWorkflow,

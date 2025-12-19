@@ -284,7 +284,8 @@ Schedules are configured in **Temporal Cloud** (namespace: signalroom-713.nzg5u)
 |-------------|------|------|
 | `hourly-sync-everflow-redtrack` | Hourly 7am-11pm ET | Sync Everflow + Redtrack |
 | `daily-sync-s3` | Daily 6am ET | Sync S3 exports |
-| `daily-report-ccw` | Daily 7am ET | Send CCW report to Slack |
+
+**Note**: Report schedules are currently disabled. Only data sync schedules are active.
 
 ### Managing Schedules
 
@@ -310,9 +311,26 @@ asyncio.run(main())
 "
 ```
 
-### Note on Worker Requirement
+### Production Worker (Fly.io)
 
-Schedules are active in Temporal Cloud but require a **running worker** to process workflows. See Phase 4 (Fly.io) in ROADMAP.md.
+The worker runs on Fly.io and processes all scheduled workflows.
+
+```bash
+# Deploy to Fly.io
+fly deploy
+
+# View logs
+fly logs
+
+# Check worker status
+fly status
+
+# Check secrets
+fly secrets list
+```
+
+**Fly.io Dashboard**: https://fly.io/apps/signalroom-worker
+**Temporal Cloud UI**: https://cloud.temporal.io/namespaces/signalroom-713.nzg5u/workflows
 
 ---
 
@@ -349,6 +367,7 @@ Reports are templated using Jinja2 (Slack/SMS) and MJML (responsive emails).
 | Report | Channels | Description |
 |--------|----------|-------------|
 | `daily_ccw` | slack, email, sms | Daily CCW performance summary |
+| `test_sync` | slack | Simple test report (Everflow + Redtrack totals) |
 | `alert` | slack, email, sms | Error/warning/info alerts |
 
 ### Running Reports Manually

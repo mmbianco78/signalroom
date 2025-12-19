@@ -6,17 +6,17 @@ from typing import Any
 
 from temporalio import workflow
 
-with workflow.unsafe.imports_passed_through():
-    from signalroom.temporal.activities import (
-        PipelineInput,
-        PipelineResult,
-        ReportInput,
-        ReportResult,
-        run_pipeline_activity,
-        run_report_activity,
-        send_notification_activity,
-    )
-    from signalroom.temporal.config import RETRY_POLICY
+# Import activities and config - sandbox is disabled in main.py
+from signalroom.temporal.activities import (
+    PipelineInput,
+    PipelineResult,
+    ReportInput,
+    ReportResult,
+    run_pipeline_activity,
+    run_report_activity,
+    send_notification_activity,
+)
+from signalroom.temporal.config import RETRY_POLICY
 
 
 @dataclass

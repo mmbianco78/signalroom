@@ -94,10 +94,22 @@ def run_pipeline(
     # Run the pipeline
     load_info = pipeline.run(source)
 
+    # Extract table counts from completed jobs
+    row_counts: dict[str, int] = {}
+    for load_package in load_info.load_packages:
+        for job in load_package.jobs.get("completed_jobs", []):
+            table_name = job.job_file_info.table_name
+            # Skip internal dlt tables
+            if not table_name.startswith("_dlt"):
+                # Count files loaded per table (approximate row indication)
+                row_counts[table_name] = row_counts.get(table_name, 0) + 1
+
     # Extract useful info for logging/tracking
     result = {
         "pipeline_name": source_name,
+        "load_id": load_info.loads_ids[0] if load_info.loads_ids else "",
         "load_ids": load_info.loads_ids,
+        "row_counts": row_counts,
         "destination": str(load_info.destination_name),
         "dataset": load_info.dataset_name,
         "started_at": str(load_info.started_at),

@@ -8,6 +8,11 @@ Usage:
 import asyncio
 import sys
 
+# Load .env before importing signalroom (settings won't auto-load it)
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from signalroom.common import get_logger, settings
 from signalroom.temporal.config import get_temporal_client
 

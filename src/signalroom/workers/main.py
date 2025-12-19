@@ -5,7 +5,7 @@ import asyncio
 import signal
 import sys
 
-from temporalio.worker import Worker
+from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from signalroom.common import get_logger, settings
 from signalroom.common.logging import configure_logging
@@ -48,6 +48,9 @@ async def run_worker(task_queue: str) -> None:
             run_report_activity,
             send_notification_activity,
         ],
+        # Disable sandbox to avoid import restriction issues with structlog/rich
+        # Note: This means workflows must be deterministic by discipline
+        workflow_runner=UnsandboxedWorkflowRunner(),
     )
 
     # Handle graceful shutdown

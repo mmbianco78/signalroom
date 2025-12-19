@@ -2,6 +2,83 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ DEPLOYMENT DISCIPLINE (READ THIS FIRST)
+
+**STOP. Before making ANY infrastructure or config changes, follow this protocol.**
+
+### The Golden Rules
+
+1. **LOCAL FIRST, ALWAYS** - Never deploy until local tests pass
+2. **ONE CHANGE AT A TIME** - Make one fix, test it, verify it works, then proceed
+3. **UNDERSTAND BEFORE FIXING** - Don't conflate unrelated errors. A Temporal sandbox error is NOT an env file loading issue.
+4. **NOTIFICATIONS ARE PRODUCTION** - Failed deployments spam Slack. This is unacceptable.
+
+### Before ANY Fly.io Deployment
+
+```bash
+# Step 1: Verify database connection locally
+python -c "from signalroom.common import settings; print(settings.postgres_connection_string[:50])"
+
+# Step 2: Test a simple pipeline locally
+python scripts/run_pipeline.py everflow
+
+# Step 3: Only if above passes, proceed to deployment
+```
+
+### When Troubleshooting Errors
+
+1. **STOP** - Don't make rapid changes
+2. **READ** - Understand the actual error message
+3. **ISOLATE** - Is this a code issue, config issue, or secrets issue?
+4. **TEST LOCALLY** - Reproduce and fix locally first
+5. **DEPLOY ONCE** - With confidence, not hope
+
+### Fly.io Secrets with Special Characters
+
+Passwords with `$`, `!`, `@` characters get mangled by shell interpolation.
+
+**WRONG:** `fly secrets set PASSWORD='$foo@bar!'` ($ gets interpreted)
+
+**RIGHT:** Use the Fly.io dashboard, or:
+```bash
+# Write to file, set from file
+echo -n 'actual-password' > /tmp/pw.txt
+fly secrets set PASSWORD=- < /tmp/pw.txt
+rm /tmp/pw.txt
+```
+
+### Known Working Configuration
+
+**Database (Supabase Pooler):**
+- Host: `aws-1-us-east-1.pooler.supabase.com`
+- Port: `6543`
+- User: `postgres.foieoinshqlescyocbld` (NOT just `postgres`)
+- Database: `postgres`
+
+**Settings config MUST have:**
+```python
+model_config = SettingsConfigDict(
+    env_file=".env",  # DO NOT REMOVE THIS
+    env_file_encoding="utf-8",
+    extra="ignore",
+)
+```
+
+**Temporal worker MUST use:**
+```python
+workflow_runner=UnsandboxedWorkflowRunner()  # Avoids sandbox issues with structlog/rich
+```
+
+### Recovery Checklist (If Things Break)
+
+1. [ ] Stop Fly.io worker: `fly machine stop <id> --app signalroom-worker`
+2. [ ] Verify local .env has correct credentials
+3. [ ] Test locally: `python scripts/run_pipeline.py everflow`
+4. [ ] Fix Fly.io secrets via dashboard (not CLI for special char passwords)
+5. [ ] Deploy and verify logs before enabling schedules
+
+---
+
 ## Project Overview
 
 **SignalRoom** is a Marketing Data Platform built by Critical Ads. It handles data ingestion, normalization, and loading into Supabase (Postgres) from various marketing data sources.
