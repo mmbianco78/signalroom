@@ -2,80 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## ⚠️ DEPLOYMENT DISCIPLINE (READ THIS FIRST)
+## ⚠️ DEPLOYMENT DISCIPLINE
 
-**STOP. Before making ANY infrastructure or config changes, follow this protocol.**
+**STOP. Before ANY deployment or config change:**
 
-### The Golden Rules
-
-1. **LOCAL FIRST, ALWAYS** - Never deploy until local tests pass
-2. **ONE CHANGE AT A TIME** - Make one fix, test it, verify it works, then proceed
-3. **UNDERSTAND BEFORE FIXING** - Don't conflate unrelated errors. A Temporal sandbox error is NOT an env file loading issue.
-4. **NOTIFICATIONS ARE PRODUCTION** - Failed deployments spam Slack. This is unacceptable.
-
-### Before ANY Fly.io Deployment
+1. **LOCAL FIRST** - Test locally before deploying
+2. **ONE CHANGE** - Make one fix, verify, then proceed
+3. **UNDERSTAND FIRST** - Don't conflate unrelated errors
 
 ```bash
-# Step 1: Verify database connection locally
-python -c "from signalroom.common import settings; print(settings.postgres_connection_string[:50])"
-
-# Step 2: Test a simple pipeline locally
-python scripts/run_pipeline.py everflow
-
-# Step 3: Only if above passes, proceed to deployment
+# Pre-deploy checklist
+python scripts/run_pipeline.py everflow  # Must pass before deploy
+fly deploy                                # Then deploy
 ```
 
-### When Troubleshooting Errors
-
-1. **STOP** - Don't make rapid changes
-2. **READ** - Understand the actual error message
-3. **ISOLATE** - Is this a code issue, config issue, or secrets issue?
-4. **TEST LOCALLY** - Reproduce and fix locally first
-5. **DEPLOY ONCE** - With confidence, not hope
-
-### Fly.io Secrets with Special Characters
-
-Passwords with `$`, `!`, `@` characters get mangled by shell interpolation.
-
-**WRONG:** `fly secrets set PASSWORD='$foo@bar!'` ($ gets interpreted)
-
-**RIGHT:** Use the Fly.io dashboard, or:
-```bash
-# Write to file, set from file
-echo -n 'actual-password' > /tmp/pw.txt
-fly secrets set PASSWORD=- < /tmp/pw.txt
-rm /tmp/pw.txt
-```
-
-### Known Working Configuration
-
-**Database (Supabase Pooler):**
-- Host: `aws-1-us-east-1.pooler.supabase.com`
-- Port: `6543`
-- User: `postgres.foieoinshqlescyocbld` (NOT just `postgres`)
-- Database: `postgres`
-
-**Settings config MUST have:**
-```python
-model_config = SettingsConfigDict(
-    env_file=".env",  # DO NOT REMOVE THIS
-    env_file_encoding="utf-8",
-    extra="ignore",
-)
-```
-
-**Temporal worker MUST use:**
-```python
-workflow_runner=UnsandboxedWorkflowRunner()  # Avoids sandbox issues with structlog/rich
-```
-
-### Recovery Checklist (If Things Break)
-
-1. [ ] Stop Fly.io worker: `fly machine stop <id> --app signalroom-worker`
-2. [ ] Verify local .env has correct credentials
-3. [ ] Test locally: `python scripts/run_pipeline.py everflow`
-4. [ ] Fix Fly.io secrets via dashboard (not CLI for special char passwords)
-5. [ ] Deploy and verify logs before enabling schedules
+**IMPORTANT:** See `.claude/skills/deploy/` for full checklist, known working config, and recovery procedures.
 
 ---
 
@@ -130,29 +71,11 @@ make temporal-ui          # Open http://localhost:8080
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│              Temporal Cluster                    │
-│   (scheduling, retries, durability, visibility)  │
-└─────────────────────────────────────────────────┘
-                        │
-            ┌───────────┴───────────┐
-            ▼                       ▼
-    ┌───────────────┐      ┌───────────────┐
-    │  API Worker   │      │Browser Worker │
-    │ (fast tasks)  │      │ (slow tasks)  │
-    └───────┬───────┘      └───────┬───────┘
-            │                      │
-            └──────────┬───────────┘
-                       ▼
-            ┌─────────────────────┐
-            │    dlt Pipelines    │
-            │ (extract, normalize,│
-            │  schema, load)      │
-            └──────────┬──────────┘
-                       ▼
-            ┌─────────────────────┐
-            │ Supabase (Postgres) │
-            └─────────────────────┘
+Temporal Cloud ──► Worker ──► dlt Pipelines ──► Supabase (Postgres)
+      │              │
+      │              └── Activities: pipelines, reports, notifications
+      │
+      └── Schedules, retries, visibility, durability
 ```
 
 ### Key Layers
@@ -270,42 +193,6 @@ Key settings in `src/signalroom/common/config.py`:
 - `settings.temporal_address` - Temporal server
 - Source API keys loaded from env
 
-## Temporal Patterns
-
-**Workflows** (pure orchestration, no I/O):
-- `SyncSourceWorkflow` - sync one source, optionally notify
-- `ScheduledSyncWorkflow` - sync multiple sources sequentially
-- `RunReportWorkflow` - run and send a templated report
-
-**Activities** (retryable work):
-- `run_pipeline_activity` - runs dlt pipeline
-- `run_report_activity` - renders and sends a report
-- `send_notification_activity` - sends Slack/email/SMS
-
-**Active Schedules** (Temporal Cloud - signalroom-713.nzg5u):
-- `hourly-sync-everflow-redtrack` - Hourly 7am-11pm ET
-- `daily-sync-s3` - Daily 6am ET
-- `daily-report-ccw` - Daily 7am ET
-
-**Retry Policy** (defined in `temporal/config.py`):
-- 5 attempts, exponential backoff (1s → 5min)
-- Non-retryable: ValueError, KeyError
-
-## dlt Patterns
-
-**Write dispositions:**
-- `append` - immutable events (conversions, clicks)
-- `merge` - mutable entities with primary key (campaigns, contacts)
-- `replace` - full refresh (feature flags)
-
-**Incremental loading:**
-```python
-@dlt.resource(write_disposition="append", primary_key="id")
-def events(after: dlt.sources.incremental[str] = dlt.sources.incremental("timestamp")):
-    # Only fetches records after last loaded timestamp
-    yield from fetch_events(since=after.last_value)
-```
-
 ## Testing
 
 ```bash
@@ -319,14 +206,31 @@ Use DuckDB destination for local testing (no Postgres needed):
 pipeline = dlt.pipeline(destination="duckdb", dataset_name="test")
 ```
 
-## Docker
+## Docker & Deployment
 
 ```bash
-# Local dev (same as production)
+# Local dev
 docker compose up --build
 
-# Build specific targets
-docker build --target dev -t signalroom:dev .
-docker build --target prod -t signalroom:prod .
-docker build --target prod-browser -t signalroom:browser .
+# Production (Fly.io)
+fly deploy              # Deploy to Fly.io
+fly logs                # View logs
+fly status              # Check status
 ```
+
+## Skills Reference
+
+Detailed workflows are in `.claude/skills/`:
+
+| Skill | Use For |
+|-------|---------|
+| `deploy` | Pre-deployment checklist, Fly.io operations |
+| `pipeline` | Running dlt pipelines, Temporal triggers |
+| `dlt` | Source patterns, incremental loading, debugging |
+| `temporal` | Workflows, activities, schedules |
+| `supabase` | Database queries, connection config |
+| `reports` | Jinja2/MJML templating |
+| `troubleshoot` | Diagnostics (read-only) |
+| `git` | Commit standards, PR workflow |
+| `root-cause-tracing` | Systematic debugging |
+| `kaizen` | Continuous improvement |
