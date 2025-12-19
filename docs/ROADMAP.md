@@ -11,10 +11,12 @@
 - [x] Core architecture working
 - [x] **Everflow source implemented** (444 rows, Dec 1-18)
 - [x] Documentation templates created
+- [x] Client data organization (data/clients/713/)
+- [x] **Redtrack source implemented** (248 rows, Dec 1-18, $211K spend)
 
 ### In Progress
-- [ ] Everflow Phase 1 sign-off (pending team QA)
-- [ ] Redtrack source implementation (Phase 2)
+- [ ] Redtrack Phase 2 sign-off (pending team QA)
+- [ ] Phase 3: Merge logic (affiliate mapping → CPA calculations)
 
 ### Pending
 - [ ] Temporal namespace activation
@@ -39,16 +41,18 @@
 
 **Details**: See `docs/EVERFLOW_IMPLEMENTATION.md`
 
-#### 1.2 Redtrack Source
+#### 1.2 Redtrack Source ✅ COMPLETE
 **Goal**: Pull ad spend data for internal affiliates
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Implement report endpoint | TODO | POST/GET `/report` |
-| Add date range filtering | TODO | |
-| Fields: clicks, conversions, cost | TODO | Group by date, source |
-| Map source_id to affiliate | TODO | Use internal-affiliates mapping |
-| Test with real API | TODO | Credentials in .env |
+| Implement report endpoint | DONE | GET `/report` (POST returns 404) |
+| Add date range filtering | DONE | One API call per day |
+| Fields: clicks, conversions, cost | DONE | Group by source |
+| Rate limiting | DONE | 1s delay + backoff on 429 |
+| Test with real API | DONE | 248 rows loaded (Dec 1-18) |
+
+**Details**: See `docs/REDTRACK_IMPLEMENTATION.md`
 
 #### 1.3 Merge Logic
 **Goal**: Join Everflow conversions with Redtrack spend
@@ -137,11 +141,11 @@
 
 ## Immediate Next Steps
 
-1. **Implement Everflow source** - Use existing API docs, test with real credentials
-2. **Implement Redtrack source** - Same approach
-3. **Create affiliate mapping table** - Load internal-affiliates.csv to Supabase
+1. **QA sign-off on Redtrack** - Verify numbers against Redtrack UI
+2. **Create affiliate mapping table** - Load internal-affiliates.csv to Supabase
+3. **Build merge query** - Join Everflow + Redtrack for CPA
 4. **Test Temporal Cloud connection** - Once namespace is active
-5. **Set up first scheduled workflow** - Daily S3 sync
+5. **Set up hourly schedules** - Match automated-reporting (7am-11pm ET)
 
 ---
 

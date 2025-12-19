@@ -6,7 +6,7 @@
 |--------|--------|-------------|----------------|----------------|-------|
 | s3_exports | ✅ Implemented | No | Via PK dedup | ✅ Yes | No |
 | everflow | ✅ Implemented | No | Via PK merge | ✅ Yes | No |
-| redtrack | Stubbed | - | - | - | No |
+| redtrack | ✅ Implemented | No | Via PK merge | ✅ Yes | No |
 | posthog | Implemented | Yes | No | No | No |
 | mautic | Implemented | No | No | No | No |
 | google_sheets | Stubbed | - | - | - | No |
@@ -190,14 +190,83 @@ LIMIT 10;
 
 **Path**: `src/signalroom/sources/redtrack/__init__.py`
 
-**Purpose**: Pull campaign and conversion data from Redtrack.
+**Purpose**: Pull ad spend data from Redtrack's reporting API for CPA calculations.
 
-**Status**: Stubbed - skeleton only.
+**Resources**:
+| Resource | Write Mode | Primary Key | Description |
+|----------|------------|-------------|-------------|
+| daily_spend | merge | date, source_id | Daily spend by traffic source |
+
+**Current Implementation**:
+- Uses GET `/report` endpoint (POST returns 404)
+- Groups by traffic source (`group=source`)
+- One API call per day for date-level granularity
+- Automatic retry with backoff on 429 rate limit
+- Adds metadata: `_client_id`, `_loaded_at`
+
+**Schema Details (daily_spend)**:
+| Column | Type | Description |
+|--------|------|-------------|
+| date | text | Report date (YYYY-MM-DD) |
+| source_id | text | Redtrack traffic source ID |
+| source_name | text | Campaign/source name |
+| source_alias | text | Platform alias (facebook, google) |
+| clicks | int | Click count |
+| conversions | int | Redtrack-tracked conversions |
+| cost | float | Ad spend |
+| _client_id | text | Client identifier |
+| _loaded_at | text | Load timestamp |
+
+**Loaded Data (December 2025)**:
+| Period | Rows | Sources | Total Cost |
+|--------|------|---------|------------|
+| Dec 1-18 | 248 | 23 | $211,152.62 |
+
+**Top Sources by Spend**:
+| Source | Cost |
+|--------|------|
+| Facebook CCW | $140,845.10 |
+| Meta CCW AWF2 Stephanie | $35,924.88 |
+| Google Ads CCW | $22,304.42 |
+
+**Rate Limiting**:
+- 1 second delay between daily requests
+- Exponential backoff on 429 (1s, 2s, 4s, max 3 retries)
 
 **Configuration**:
 ```
 REDTRACK_API_KEY=
+REDTRACK_BASE_URL=https://api.redtrack.io
 ```
+
+**Usage**:
+```bash
+# Run for date range
+python -c "from signalroom.pipelines.runner import run_pipeline; print(run_pipeline('redtrack', source_kwargs={'start_date': '2025-12-01', 'end_date': '2025-12-18'}))"
+```
+
+**Example Queries**:
+```sql
+-- Daily spend by source
+SELECT
+    date,
+    source_name,
+    cost,
+    clicks
+FROM redtrack.daily_spend
+ORDER BY date DESC, cost DESC;
+
+-- Total spend by source
+SELECT
+    source_name,
+    SUM(cost) as total_cost,
+    SUM(clicks) as total_clicks
+FROM redtrack.daily_spend
+GROUP BY source_name
+ORDER BY total_cost DESC;
+```
+
+**API Reference**: https://help.redtrack.io/hc/en-us/categories/360003146479-API
 
 ---
 
