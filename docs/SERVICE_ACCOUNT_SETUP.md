@@ -43,7 +43,15 @@ This guide walks through setting up all service accounts needed for SignalRoom n
 3. Review permissions and click **"Allow"**
 4. Copy the **Bot User OAuth Token** (starts with `xoxb-`)
 
+app id: A0A5JPTBS3A
+client id: 3003448746865.10188809400112
+client secret: a480e2196b5904aae531f2c4bfa31f34
+signing secret: 
+bf330ee4d7102b6071e5b4025e2ad222
+ver token: zKytTV5YgNlqAbjO8mo3VwYS
+
 ### Step 1.4: Get Channel ID
+
 
 1. Open Slack and go to the channel where you want reports sent
 2. Right-click the channel name → **"View channel details"**

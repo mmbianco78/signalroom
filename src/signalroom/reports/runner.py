@@ -80,6 +80,9 @@ def run_report(
     query = report.get_query()
     data = execute_query(query, merged_params)
 
+    # Add generated_at timestamp for templates
+    data["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+
     if not data:
         log.warning("report_no_data", report=report_name, params=merged_params)
         data = {

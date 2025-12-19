@@ -143,30 +143,41 @@ async def create_daily_s3_schedule(client: Any) -> str:
     return schedule_id
 
 
-async def create_daily_report_schedule(client: Any) -> str:
+async def create_daily_report_schedule(client: Any, test_mode: bool = True) -> str:
     """Create daily report schedule.
 
     Runs at 7am Eastern Time (12:00 UTC winter / 11:00 UTC summer).
-    Sends daily CCW performance summary.
-    """
-    schedule_id = "daily-report-ccw"
 
-    try:
-        handle = client.get_schedule_handle(schedule_id)
-        await handle.delete()
-        print(f"Deleted existing schedule: {schedule_id}")
-    except Exception:
-        pass
+    Args:
+        test_mode: If True, uses test_sync report (safe). If False, uses daily_ccw.
+    """
+    # Delete old schedule if exists
+    for old_id in ["daily-report-ccw", "daily-report-test"]:
+        try:
+            handle = client.get_schedule_handle(old_id)
+            await handle.delete()
+            print(f"Deleted existing schedule: {old_id}")
+        except Exception:
+            pass
+
+    if test_mode:
+        schedule_id = "daily-report-test"
+        report_name = "test_sync"
+        note = "TEST: Daily sync status report (7am ET) - safe for public channel"
+    else:
+        schedule_id = "daily-report-ccw"
+        report_name = "daily_ccw"
+        note = "Daily CCW performance report (7am ET)"
 
     schedule = Schedule(
         action=ScheduleActionStartWorkflow(
             RunReportWorkflow.run,
             ReportInput(
-                report_name="daily_ccw",
+                report_name=report_name,
                 channel="slack",
                 send=True,
             ),
-            id="scheduled-report-ccw-daily",
+            id=f"scheduled-report-{report_name}-daily",
             task_queue=TASK_QUEUE,
         ),
         spec=ScheduleSpec(
@@ -179,12 +190,12 @@ async def create_daily_report_schedule(client: Any) -> str:
         ),
         policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.SKIP),
         state=ScheduleState(
-            note="Daily CCW performance report (7am ET)",
+            note=note,
         ),
     )
 
     await client.create_schedule(schedule_id, schedule)
-    print(f"✓ Created schedule: {schedule_id}")
+    print(f"✓ Created schedule: {schedule_id} (report: {report_name})")
     return schedule_id
 
 
@@ -218,8 +229,13 @@ async def delete_all_schedules(client: Any) -> None:
             print(f"  Skipped {schedule_id}: {e}")
 
 
-async def main(delete: bool = False) -> None:
-    """Main entry point."""
+async def main(delete: bool = False, production: bool = False) -> None:
+    """Main entry point.
+
+    Args:
+        delete: If True, delete all schedules instead of creating
+        production: If True, use full reports. If False (default), use safe test reports.
+    """
     print("Connecting to Temporal Cloud...")
     client = await get_temporal_client()
     print(f"✓ Connected to namespace: {client.namespace}")
@@ -229,7 +245,8 @@ async def main(delete: bool = False) -> None:
         await delete_all_schedules(client)
         return
 
-    print("Setting up schedules...")
+    mode = "PRODUCTION" if production else "TEST (safe for public channels)"
+    print(f"Setting up schedules... Mode: {mode}")
     print()
 
     # Create hourly sync schedule
@@ -238,16 +255,19 @@ async def main(delete: bool = False) -> None:
     # Create daily S3 schedule
     await create_daily_s3_schedule(client)
 
-    # Create daily report schedule
-    await create_daily_report_schedule(client)
+    # Create daily report schedule (test_sync by default, daily_ccw with --production)
+    await create_daily_report_schedule(client, test_mode=not production)
 
     print()
     print("=" * 50)
     print("Current schedules:")
     await list_schedules(client)
     print("=" * 50)
+    if not production:
+        print("\nNote: Using TEST mode. Run with --production for full reports.")
 
 
 if __name__ == "__main__":
     delete_mode = "--delete" in sys.argv
-    asyncio.run(main(delete=delete_mode))
+    production_mode = "--production" in sys.argv
+    asyncio.run(main(delete=delete_mode, production=production_mode))

@@ -44,6 +44,20 @@ alert = register_report(
     )
 )
 
+# Test Sync Report (for validating the deployment)
+test_sync = register_report(
+    Report(
+        name="test_sync",
+        description="Test report showing basic sync totals - no sensitive data",
+        query="test_sync.sql",
+        templates={
+            "slack": "test_sync.slack.j2",
+        },
+        schedule="0 7 * * *",  # 7am daily (will replace daily_ccw schedule)
+        params={},
+    )
+)
+
 # Daily EXP Report (placeholder for future)
 # daily_exp = register_report(
 #     Report(
