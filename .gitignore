@@ -29,13 +29,16 @@ env/
 # IDE
 .idea/
 .vscode/
-.claude/
 *.swp
 *.swo
 *~
 .project
 .pydevproject
 .settings/
+
+# Claude Code (commit skills, ignore local state)
+.claude/*
+!.claude/skills/
 
 # Testing
 .pytest_cache/
