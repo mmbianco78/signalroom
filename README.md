@@ -249,6 +249,7 @@ signalroom/
 | `docs/API_REFERENCE.md` | External API endpoints, auth, examples |
 | `docs/DATA_MODEL.md` | Entity relationships, business logic, schemas |
 | `docs/DATA_ORGANIZATION.md` | File conventions, client data patterns |
+| `docs/PROJECT_PATTERNS.md` | Meta-doc for replicating this project structure |
 | `docs/SOURCES.md` | dlt source implementation details |
 | `docs/ROADMAP.md` | Project phases and current status |
 | `docs/OPERATIONS.md` | Runbooks and operational procedures |

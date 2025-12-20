@@ -142,6 +142,7 @@ signalroom/
 │   ├── API_REFERENCE.md      # External API docs & examples (LIVE URLS)
 │   ├── DATA_MODEL.md         # Entity relationships, business logic, schemas
 │   ├── DATA_ORGANIZATION.md  # File conventions, client data patterns
+│   ├── PROJECT_PATTERNS.md   # Meta-doc: how to replicate this structure
 │   ├── SOURCES.md            # dlt source implementation details
 │   ├── ROADMAP.md            # Project phases and status
 │   ├── OPERATIONS.md         # Runbooks and operational procedures
