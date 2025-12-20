@@ -228,12 +228,27 @@ signalroom/
 │   ├── pipelines/         # Pipeline runner
 │   ├── temporal/          # Workflows and Activities
 │   ├── workers/           # Worker entry points
+│   ├── reports/           # Jinja2/MJML templated reports
 │   ├── notifications/     # Slack, Email, SMS
 │   └── common/            # Config, logging
 ├── scripts/               # CLI tools
 ├── tests/
+├── docs/                  # Documentation (see below)
+├── .claude/skills/        # Claude Code skill definitions
 ├── docker-compose.yml
 ├── Dockerfile
 ├── Makefile
 └── pyproject.toml
 ```
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| `CLAUDE.md` | AI/developer guidance, commands, patterns |
+| `docs/API_REFERENCE.md` | External API endpoints, auth, examples |
+| `docs/DATA_MODEL.md` | Entity relationships, business logic, schemas |
+| `docs/DATA_ORGANIZATION.md` | File conventions, client data patterns |
+| `docs/SOURCES.md` | dlt source implementation details |
+| `docs/ROADMAP.md` | Project phases and current status |
+| `docs/OPERATIONS.md` | Runbooks and operational procedures |
