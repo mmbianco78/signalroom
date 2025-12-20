@@ -126,9 +126,9 @@ dlt pipeline {pipeline_name} drop-pending-packages
 
 | Source | Write Mode | Primary Key |
 |--------|------------|-------------|
-| `s3_exports` | append | (none - immutable CSVs) |
-| `everflow` | merge | `date, affiliate_id` |
-| `redtrack` | merge | `date, campaign_id` |
+| `s3_exports` | append | `_file_name, _row_id` |
+| `everflow` | merge | `date, affiliate_id, advertiser_id` |
+| `redtrack` | merge | `date, source_id` |
 
 ## Testing Locally
 
@@ -147,3 +147,4 @@ pipeline = dlt.pipeline(
 - [dlt Documentation](https://dlthub.com/docs)
 - [Write Dispositions](https://dlthub.com/docs/general-usage/incremental-loading)
 - [Schema Evolution](https://dlthub.com/docs/general-usage/schema)
+- **SignalRoom API Reference**: `docs/API_REFERENCE.md` — Live docs, auth, request/response examples

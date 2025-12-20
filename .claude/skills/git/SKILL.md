@@ -81,7 +81,7 @@ git commit -m "$(cat <<'EOF'
 feat: Add Redtrack source
 
 - Implements daily_spend resource
-- Uses merge disposition with date+campaign_id key
+- Uses merge disposition with date+source_id key
 - Adds to pipeline runner registry
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

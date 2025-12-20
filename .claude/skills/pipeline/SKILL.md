@@ -16,6 +16,8 @@ description: Run dlt pipelines and Temporal workflows for SignalRoom. Use when s
 | `mautic` | Mautic contacts/campaigns | Stubbed |
 | `google_sheets` | Google Sheets data | Stubbed |
 
+**API Reference**: See `docs/API_REFERENCE.md` for live docs, auth, and request/response examples.
+
 ## Run Pipeline Directly (Local Testing)
 
 ```bash

@@ -247,3 +247,9 @@ Document findings and escalate with:
 - Relevant log snippets
 - What you've tried
 - Timeline of when it started
+
+## References
+
+- **API Reference**: `docs/API_REFERENCE.md` — Live docs, auth, request/response examples
+- **Source Details**: `docs/SOURCES.md` — Schema, queries, implementation notes
+- **Data Patterns**: `docs/DATA_ORGANIZATION.md` — Client data structure
