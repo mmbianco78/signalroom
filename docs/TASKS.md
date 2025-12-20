@@ -206,7 +206,7 @@ Granular task list organized by phase. Each phase gets its own branch, requires 
 
 ### 3.4 Documentation
 
-- [ ] Document merge logic in `docs/INTEGRATIONS.md`
+- [x] Document merge logic in `docs/DATA_MODEL.md`
 - [ ] Add merge queries to `docs/QUERIES.sql`
 
 ### 3.5 Sign-off Checklist
