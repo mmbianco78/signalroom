@@ -36,9 +36,10 @@ env/
 .pydevproject
 .settings/
 
-# Claude Code (commit skills, ignore local state)
+# Claude Code (commit skills and constitution, ignore local state)
 .claude/*
 !.claude/skills/
+!.claude/CONSTITUTION.md
 
 # Testing
 .pytest_cache/

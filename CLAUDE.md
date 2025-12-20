@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Constitution**: `.claude/CONSTITUTION.md` — Immutable principles governing all development decisions.
+
 ## ⚠️ DEPLOYMENT DISCIPLINE
 
 **STOP. Before ANY deployment or config change:**
@@ -111,6 +113,9 @@ Temporal Cloud ──► Worker ──► dlt Pipelines ──► Supabase (Post
 
 ```
 signalroom/
+├── .claude/
+│   ├── CONSTITUTION.md    # Immutable development principles
+│   └── skills/            # Workflow-specific guidance
 ├── .dlt/
 │   ├── config.toml        # Pipeline config (non-sensitive, committed)
 │   └── secrets.toml       # API keys (gitignored)

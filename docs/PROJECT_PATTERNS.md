@@ -6,11 +6,76 @@ How to set up a new project following the SignalRoom pattern. This is the meta-d
 
 ## Philosophy
 
-1. **AI-first documentation** - Structure docs for both humans AND agentic AI tools
-2. **Single source of truth** - One authoritative location per concept
-3. **Separation of concerns** - External APIs vs internal data models vs operational guides
-4. **Skills as guardrails** - Encode workflows, not just commands
-5. **Client-tagged data** - All data includes `_client_id` for multi-client without multi-tenancy
+1. **Constitution-governed** - Immutable principles guide all development decisions
+2. **AI-first documentation** - Structure docs for both humans AND agentic AI tools
+3. **Single source of truth** - One authoritative location per concept
+4. **Separation of concerns** - External APIs vs internal data models vs operational guides
+5. **Skills as guardrails** - Encode workflows, not just commands
+6. **Client-tagged data** - All data includes `_client_id` for multi-client without multi-tenancy
+
+---
+
+## Constitution
+
+The constitution (`.claude/CONSTITUTION.md`) contains immutable principles governing all development. It is the highest-authority document in the project.
+
+### Purpose
+
+- Establishes non-negotiable development principles
+- Guides AI agents toward correct decisions
+- Prevents ad-hoc exceptions that accumulate into inconsistency
+- Documents the "why" behind architectural choices
+
+### Structure
+
+```markdown
+# Project Constitution
+
+## Preamble
+One paragraph: what the project is and its core mission.
+
+## Article I: [Principle Name]
+**One-sentence mandate in bold.**
+
+- Specific rules
+- What must/must not be done
+- Examples if helpful
+
+**Rationale**: Why this principle exists.
+
+## Article II: ...
+(Repeat for each principle)
+
+## Enforcement
+How violations are handled.
+
+## Amendments
+How to propose changes.
+```
+
+### SignalRoom Constitutional Articles
+
+| Article | Principle | Summary |
+|---------|-----------|---------|
+| I | dlt-First | All data ingestion via dlt sources |
+| II | Temporal Orchestration | All scheduling via Temporal workflows |
+| III | Client Tagging | Every row includes `_client_id` |
+| IV | Environment Config | All config from env vars |
+| V | Skills as Guardrails | Complex workflows need skills |
+| VI | Documentation Separation | Clear doc responsibilities |
+| VII | Test Before Deploy | Local verification required |
+| VIII | Merge Over Replace | Prefer merge for mutable data |
+| IX | Observability | All operations visible |
+| X | Simplicity | No premature abstraction |
+| XI | Primary Keys Sacred | Explicit PKs always |
+| XII | Live Docs Visible | API URLs front and center |
+
+### When to Reference the Constitution
+
+- Before making architectural decisions
+- When unsure which pattern to follow
+- During code review
+- When proposing new patterns
 
 ---
 
@@ -18,6 +83,9 @@ How to set up a new project following the SignalRoom pattern. This is the meta-d
 
 ```
 project/
+├── .claude/
+│   ├── CONSTITUTION.md    # Immutable development principles (REQUIRED)
+│   └── skills/            # Workflow-specific guidance
 ├── CLAUDE.md              # AI/developer entry point (REQUIRED)
 ├── README.md              # Human entry point, quick start
 └── docs/
@@ -35,6 +103,7 @@ project/
 
 | Document | Contains | Does NOT Contain |
 |----------|----------|------------------|
+| `CONSTITUTION.md` | Immutable principles, rationales | Implementation details |
 | `CLAUDE.md` | Commands, project structure, quick reference | Detailed implementation |
 | `README.md` | Quick start, architecture overview | AI-specific instructions |
 | `API_REFERENCE.md` | Live doc URLs, auth, request/response examples | Business logic |
@@ -250,13 +319,23 @@ data/clients/cti/mappings/campaigns.csv
 
 ```bash
 mkdir -p project/{src,docs,scripts,tests,.claude/skills}
+touch project/.claude/CONSTITUTION.md
 touch project/{CLAUDE.md,README.md,Makefile,pyproject.toml}
 touch project/docs/{API_REFERENCE.md,DATA_MODEL.md,DATA_ORGANIZATION.md}
 touch project/docs/{SOURCES.md,OPERATIONS.md,ROADMAP.md}
 mkdir -p project/docs/{templates,archive}
 ```
 
-### 2. Essential Skills
+### 2. Constitution First
+
+Write the constitution before any implementation:
+
+1. Define 5-12 immutable principles
+2. Each principle: bold mandate + rules + rationale
+3. Include enforcement and amendment sections
+4. Reference from CLAUDE.md
+
+### 3. Essential Skills
 
 Create these skills first:
 
@@ -266,18 +345,19 @@ Create these skills first:
 | `troubleshoot` | Read-only diagnostics |
 | `git` | Commit standards, PR workflow |
 
-### 3. Documentation Order
+### 4. Documentation Order
 
 Write in this order:
 
-1. **README.md** - Quick start, architecture overview
-2. **CLAUDE.md** - Commands, structure, AI guidance
-3. **API_REFERENCE.md** - External APIs (live URLs!)
-4. **DATA_MODEL.md** - Entity relationships
-5. **SOURCES.md** - Implementation details
-6. **OPERATIONS.md** - Runbooks (as you learn them)
+1. **CONSTITUTION.md** - Immutable principles (do this first!)
+2. **README.md** - Quick start, architecture overview
+3. **CLAUDE.md** - Commands, structure, AI guidance
+4. **API_REFERENCE.md** - External APIs (live URLs!)
+5. **DATA_MODEL.md** - Entity relationships
+6. **SOURCES.md** - Implementation details
+7. **OPERATIONS.md** - Runbooks (as you learn them)
 
-### 4. Skill Creation Order
+### 5. Skill Creation Order
 
 Create skills as workflows emerge:
 
@@ -286,10 +366,11 @@ Create skills as workflows emerge:
 3. Add diagnostic skills after first incident
 4. Add process skills for repeated patterns
 
-### 5. Verification
+### 6. Verification
 
 Before going live:
 
+- [ ] Constitution written with clear principles
 - [ ] All external API URLs verified working
 - [ ] Skills cross-referenced against implementation
 - [ ] Primary keys documented and match code
