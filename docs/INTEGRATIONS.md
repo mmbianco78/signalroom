@@ -2,6 +2,8 @@
 
 Documentation for Everflow and Redtrack integrations, based on the existing `automated-reporting` CLI tool.
 
+> **API Reference**: For live documentation URLs, authentication details, and request/response examples, see [`docs/API_REFERENCE.md`](./API_REFERENCE.md).
+
 ---
 
 ## Everflow (Affiliate Tracking)

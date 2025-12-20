@@ -1,5 +1,7 @@
 # Data Sources
 
+> **API Reference**: For live documentation URLs and request/response examples, see [`docs/API_REFERENCE.md`](./API_REFERENCE.md).
+
 ## Status Matrix
 
 | Source | Status | Incremental | State Tracking | Client Tagging | Tests |

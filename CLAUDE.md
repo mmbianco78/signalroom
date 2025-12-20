@@ -100,10 +100,12 @@ Temporal Cloud ──► Worker ──► dlt Pipelines ──► Supabase (Post
 
 ### Adding a New Source
 
-1. Create `src/signalroom/sources/{source_name}/__init__.py`
-2. Define `@dlt.source` with `@dlt.resource` functions
-3. Register in `src/signalroom/pipelines/runner.py` SOURCES dict
-4. Add credentials to `.env` and `src/signalroom/common/config.py`
+1. Check `docs/API_REFERENCE.md` for API docs, auth, and request/response examples
+2. Create `src/signalroom/sources/{source_name}/__init__.py`
+3. Define `@dlt.source` with `@dlt.resource` functions
+4. Register in `src/signalroom/pipelines/runner.py` SOURCES dict
+5. Add credentials to `.env` and `src/signalroom/common/config.py`
+6. Update `docs/API_REFERENCE.md` with any new endpoints used
 
 ## Project Structure
 
@@ -138,6 +140,7 @@ signalroom/
 ├── tests/
 ├── docs/
 │   ├── templates/         # Documentation templates
+│   ├── API_REFERENCE.md   # External API docs & examples (LIVE URLS)
 │   └── DATA_ORGANIZATION.md  # Client data patterns (READ THIS)
 ├── docker-compose.yml     # Temporal + Postgres + Worker
 ├── Dockerfile
