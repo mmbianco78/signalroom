@@ -139,9 +139,14 @@ signalroom/
 ├── scripts/               # CLI tools for manual runs
 ├── tests/
 ├── docs/
-│   ├── templates/         # Documentation templates
-│   ├── API_REFERENCE.md   # External API docs & examples (LIVE URLS)
-│   └── DATA_ORGANIZATION.md  # Client data patterns (READ THIS)
+│   ├── API_REFERENCE.md      # External API docs & examples (LIVE URLS)
+│   ├── DATA_MODEL.md         # Entity relationships, business logic, schemas
+│   ├── DATA_ORGANIZATION.md  # File conventions, client data patterns
+│   ├── SOURCES.md            # dlt source implementation details
+│   ├── ROADMAP.md            # Project phases and status
+│   ├── OPERATIONS.md         # Runbooks and operational procedures
+│   ├── templates/            # Documentation templates
+│   └── archive/              # Historical notes and postmortems
 ├── docker-compose.yml     # Temporal + Postgres + Worker
 ├── Dockerfile
 ├── Makefile

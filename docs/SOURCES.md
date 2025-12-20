@@ -6,17 +6,17 @@
 
 | Source | Status | Incremental | State Tracking | Client Tagging | Tests |
 |--------|--------|-------------|----------------|----------------|-------|
-| s3_exports | ✅ Implemented | No | Via PK dedup | ✅ Yes | No |
-| everflow | ✅ Implemented | No | Via PK merge | ✅ Yes | No |
-| redtrack | ✅ Implemented | No | Via PK merge | ✅ Yes | No |
-| posthog | Implemented | Yes | No | No | No |
-| mautic | Implemented | No | No | No | No |
+| s3_exports | ✅ Production | No | Via PK dedup | ✅ Yes | No |
+| everflow | ✅ Production | No | Via PK merge | ✅ Yes | No |
+| redtrack | ✅ Production | No | Via PK merge | ✅ Yes | No |
+| posthog | Code complete | Yes | No | No | No |
+| mautic | Code complete | No | No | No | No |
 | google_sheets | Stubbed | - | - | - | No |
 
 ### Status Definitions
 
-- **Implemented**: Core functionality works, may have gaps
-- **Partial**: Some functionality, known TODOs
+- **Production**: Actively running in production (Fly.io worker, Temporal schedules)
+- **Code complete**: Implementation exists but not deployed to production
 - **Stubbed**: Skeleton only, returns no data
 
 ---
