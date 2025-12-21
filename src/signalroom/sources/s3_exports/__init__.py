@@ -19,9 +19,10 @@ from signalroom.common import get_logger, settings
 
 log = get_logger(__name__)
 
-# Initial value for incremental loading - set to current max date in database
+# Initial value for incremental loading - set to day AFTER current max in database
 # This ensures we don't re-fetch historical data on first run with incremental
-S3_INITIAL_DATE = "2025-12-18"
+# Database has data through 2025-12-18, so start from 2025-12-19
+S3_INITIAL_DATE = "2025-12-19"
 
 
 def _make_table_name(prefix: str) -> str:
