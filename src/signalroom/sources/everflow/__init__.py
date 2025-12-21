@@ -5,7 +5,7 @@ Groups by date and affiliate for daily performance tracking.
 """
 
 from collections.abc import Iterator
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import dlt
@@ -125,38 +125,48 @@ class EverflowClient:
 
             # Convert epoch timestamp to date string
             epoch = int(date_col.get("id", 0))
-            date_str = datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%d") if epoch else None
+            date_str = (
+                datetime.fromtimestamp(epoch, tz=UTC).strftime("%Y-%m-%d")
+                if epoch
+                else None
+            )
 
-            parsed_rows.append({
-                "date": date_str,
-                "affiliate_id": int(affiliate.get("id", 0)) if affiliate.get("id") else None,
-                "affiliate_label": affiliate.get("label"),
-                "advertiser_id": adv_id,
-                "advertiser_label": advertiser.get("label"),
-                "clicks": int(reporting.get("total_click", 0) or 0),
-                "conversions": int(reporting.get("cv", 0) or 0),
-                "revenue": float(reporting.get("revenue", 0) or 0),
-                "payout": float(reporting.get("payout", 0) or 0),
-                "profit": float(reporting.get("profit", 0) or 0),
-            })
+            parsed_rows.append(
+                {
+                    "date": date_str,
+                    "affiliate_id": int(affiliate.get("id", 0)) if affiliate.get("id") else None,
+                    "affiliate_label": affiliate.get("label"),
+                    "advertiser_id": adv_id,
+                    "advertiser_label": advertiser.get("label"),
+                    "clicks": int(reporting.get("total_click", 0) or 0),
+                    "conversions": int(reporting.get("cv", 0) or 0),
+                    "revenue": float(reporting.get("revenue", 0) or 0),
+                    "payout": float(reporting.get("payout", 0) or 0),
+                    "profit": float(reporting.get("profit", 0) or 0),
+                }
+            )
 
         log.info("everflow_api_response", row_count=len(parsed_rows))
         return parsed_rows
 
 
+# Initial value for incremental loading - set to current max date in database
+# This ensures we don't re-fetch historical data on first run with incremental
+EVERFLOW_INITIAL_DATE = "2025-12-20"
+
+
 @dlt.source(name="everflow")
 def everflow(
-    start_date: str | None = None,
-    end_date: str | None = None,
     advertiser_id: int | None = None,
     client_id: str = "713",
     api_key: str | None = None,
 ) -> list[DltResource]:
     """Source for Everflow affiliate performance data.
 
+    Uses dlt incremental loading to automatically track the last processed date.
+    On each run, fetches data from last processed date to yesterday.
+
     Args:
-        start_date: Start date (YYYY-MM-DD). Defaults to yesterday.
-        end_date: End date (YYYY-MM-DD). Defaults to yesterday.
         advertiser_id: Filter by advertiser (1=CCW, 2=EXP). None = all.
         client_id: Client identifier for tagging data.
         api_key: Everflow API key. Defaults to settings.
@@ -164,13 +174,6 @@ def everflow(
     Returns:
         List of dlt resources.
     """
-    # Default to yesterday if no dates provided
-    if not start_date:
-        yesterday = date.today() - timedelta(days=1)
-        start_date = yesterday.isoformat()
-    if not end_date:
-        end_date = start_date
-
     ef_client = EverflowClient(api_key=api_key)
 
     @dlt.resource(
@@ -178,15 +181,42 @@ def everflow(
         write_disposition="merge",
         primary_key=["date", "affiliate_id", "advertiser_id"],
     )
-    def daily_stats() -> Iterator[dict[str, Any]]:
+    def daily_stats(
+        date_cursor: dlt.sources.incremental[str] = dlt.sources.incremental(
+            "date",
+            initial_value=EVERFLOW_INITIAL_DATE,
+        ),
+    ) -> Iterator[dict[str, Any]]:
         """Load daily affiliate stats from Everflow.
 
-        Uses merge write disposition to update existing records if re-run.
+        Uses dlt incremental to track last processed date.
+        Merge write disposition updates existing records if re-run.
+
+        Args:
+            date_cursor: dlt incremental tracker for the date field.
+                Automatically tracks max(date) from yielded rows.
         """
+        # Calculate date range:
+        # - start_date: from incremental state (last processed date)
+        # - end_date: yesterday (data is finalized at end of day)
+        start_date = date_cursor.start_value
+        end_date = (date.today() - timedelta(days=1)).isoformat()
+
+        # Skip if we're already caught up (start > end can happen if run twice same day)
+        if start_date > end_date:
+            log.info(
+                "everflow_already_current",
+                start_value=start_date,
+                end_date=end_date,
+                message="No new data to fetch",
+            )
+            return
+
         log.info(
             "fetching_daily_stats",
             start_date=start_date,
             end_date=end_date,
+            incremental_start_value=date_cursor.start_value,
             advertiser_id=advertiser_id,
         )
 
@@ -199,7 +229,14 @@ def everflow(
         for row in rows:
             # Add metadata columns
             row["_client_id"] = client_id
-            row["_loaded_at"] = datetime.utcnow().isoformat()
+            row["_loaded_at"] = datetime.now(UTC).isoformat()
             yield row
+
+        log.info(
+            "everflow_fetch_complete",
+            rows_yielded=len(rows),
+            start_date=start_date,
+            end_date=end_date,
+        )
 
     return [daily_stats]

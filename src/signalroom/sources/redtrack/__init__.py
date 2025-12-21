@@ -2,10 +2,12 @@
 
 Ingests ad spend and conversion data from Redtrack's reporting API.
 Groups by date and traffic source for spend tracking and affiliate mapping.
+
+Uses dlt incremental loading to automatically track the last processed date.
 """
 
 from collections.abc import Iterator
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import dlt
@@ -168,7 +170,7 @@ class RedtrackClient:
 
                     # Handle rate limiting with retry
                     if response.status_code == 429:
-                        wait_time = 2 ** attempt  # 1, 2, 4 seconds
+                        wait_time = 2**attempt  # 1, 2, 4 seconds
                         log.warning(
                             "redtrack_rate_limited",
                             attempt=attempt + 1,
@@ -197,7 +199,7 @@ class RedtrackClient:
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
                     last_exception = e
-                    wait_time = 2 ** attempt
+                    wait_time = 2**attempt
                     log.warning(
                         "redtrack_rate_limited",
                         attempt=attempt + 1,
@@ -224,12 +226,7 @@ def _normalize_row(row: dict[str, Any], report_date: str | None = None) -> dict[
         Normalized row with consistent field names.
     """
     # Extract date - may be in various formats
-    row_date = (
-        row.get("date")
-        or row.get("Date")
-        or row.get("day")
-        or report_date
-    )
+    row_date = row.get("date") or row.get("Date") or row.get("day") or report_date
 
     # Extract source info - handle various field names
     source_id = str(
@@ -250,10 +247,7 @@ def _normalize_row(row: dict[str, Any], report_date: str | None = None) -> dict[
     )
 
     source_alias = (
-        row.get("source_alias")
-        or row.get("sourceAlias")
-        or row.get("traffic_source_alias")
-        or ""
+        row.get("source_alias") or row.get("sourceAlias") or row.get("traffic_source_alias") or ""
     )
 
     # Extract metrics with safe conversion
@@ -289,31 +283,28 @@ def _normalize_row(row: dict[str, Any], report_date: str | None = None) -> dict[
     }
 
 
+# Initial value for incremental loading - set to current max date in database
+# This ensures we don't re-fetch historical data on first run with incremental
+REDTRACK_INITIAL_DATE = "2025-12-20"
+
+
 @dlt.source(name="redtrack")
 def redtrack(
-    start_date: str | None = None,
-    end_date: str | None = None,
     client_id: str = "713",
     api_key: str | None = None,
 ) -> list[DltResource]:
     """Source for Redtrack ad spend and conversion data.
 
+    Uses dlt incremental loading to automatically track the last processed date.
+    On each run, fetches data from last processed date to yesterday.
+
     Args:
-        start_date: Start date (YYYY-MM-DD). Defaults to yesterday.
-        end_date: End date (YYYY-MM-DD). Defaults to yesterday.
         client_id: Client identifier for tagging data.
         api_key: Redtrack API key. Defaults to settings.
 
     Returns:
         List of dlt resources.
     """
-    # Default to yesterday if no dates provided
-    if not start_date:
-        yesterday = date.today() - timedelta(days=1)
-        start_date = yesterday.isoformat()
-    if not end_date:
-        end_date = start_date
-
     rt_client = RedtrackClient(api_key=api_key)
 
     @dlt.resource(
@@ -321,17 +312,48 @@ def redtrack(
         write_disposition="merge",
         primary_key=["date", "source_id"],
     )
-    def daily_spend() -> Iterator[dict[str, Any]]:
+    def daily_spend(
+        date_cursor: dlt.sources.incremental[str] = dlt.sources.incremental(
+            "date",
+            initial_value=REDTRACK_INITIAL_DATE,
+        ),
+    ) -> Iterator[dict[str, Any]]:
         """Load daily spend by traffic source from Redtrack.
 
-        Uses merge write disposition to update existing records if re-run.
+        Uses dlt incremental to track last processed date.
+        Merge write disposition updates existing records if re-run.
         Groups by source for each day in the date range.
+
+        Args:
+            date_cursor: dlt incremental tracker for the date field.
+                Automatically tracks max(date) from yielded rows.
         """
-        from datetime import datetime as dt
+        # Calculate date range:
+        # - start_date: from incremental state (last processed date)
+        # - end_date: yesterday (data is finalized at end of day)
+        start_date = date_cursor.start_value
+        end_date = (date.today() - timedelta(days=1)).isoformat()
+
+        # Skip if we're already caught up (start > end can happen if run twice same day)
+        if start_date > end_date:
+            log.info(
+                "redtrack_already_current",
+                start_value=start_date,
+                end_date=end_date,
+                message="No new data to fetch",
+            )
+            return
+
+        log.info(
+            "fetching_daily_spend_range",
+            start_date=start_date,
+            end_date=end_date,
+            incremental_start_value=date_cursor.start_value,
+        )
 
         # Parse date range
-        start_dt = dt.strptime(start_date, "%Y-%m-%d").date()
-        end_dt = dt.strptime(end_date, "%Y-%m-%d").date()
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
 
         # Iterate through each day to get date-level granularity
         current_date = start_dt
@@ -360,7 +382,7 @@ def redtrack(
 
                 # Add metadata columns
                 normalized["_client_id"] = client_id
-                normalized["_loaded_at"] = datetime.utcnow().isoformat()
+                normalized["_loaded_at"] = datetime.now(UTC).isoformat()
 
                 total_rows += 1
                 yield normalized
@@ -369,8 +391,14 @@ def redtrack(
             current_date += timedelta(days=1)
             if current_date <= end_dt:
                 import time
+
                 time.sleep(1)  # 1 second delay between days
 
-        log.info("daily_spend_complete", total_rows=total_rows)
+        log.info(
+            "redtrack_fetch_complete",
+            rows_yielded=total_rows,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
     return [daily_spend]
