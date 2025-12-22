@@ -6,10 +6,10 @@
 
 | Source | Status | Incremental | State Tracking | Client Tagging | Tests |
 |--------|--------|-------------|----------------|----------------|-------|
-| s3_exports | ✅ Production | No | Via PK dedup | ✅ Yes | No |
-| everflow | ✅ Production | No | Via PK merge | ✅ Yes | No |
-| redtrack | ✅ Production | No | Via PK merge | ✅ Yes | No |
-| posthog | Code complete | Yes | No | No | No |
+| s3_exports | ✅ Production | File-level | `resource_state()` | ✅ Yes | No |
+| everflow | ✅ Production | Row-level | `dlt.sources.incremental` | ✅ Yes | No |
+| redtrack | ✅ Production | Row-level | `dlt.sources.incremental` | ✅ Yes | No |
+| posthog | Code complete | Row-level | `dlt.sources.incremental` | No | No |
 | mautic | Code complete | No | No | No | No |
 | google_sheets | Stubbed | - | - | - | No |
 
@@ -30,16 +30,22 @@
 **Resources**:
 | Resource | Write Mode | Primary Key | Description |
 |----------|------------|-------------|-------------|
-| orders_create | append | _file_name, _row_id | New order records |
-| orders_update | append | _file_name, _row_id | Order status updates |
-| prospects_create | append | _file_name, _row_id | New prospect records (empty) |
+| orders_create | merge | _file_name, _row_id | New order records |
+| orders_update | merge | _file_name, _row_id | Order status updates |
+| prospects_create | merge | _file_name, _row_id | New prospect records (empty) |
 
 **Current Implementation**:
 - Creates one table per S3 prefix (orders-create → orders_create)
 - Adds metadata columns: `_file_name`, `_row_id`, `_file_date`, `_client_id`
 - Uses s3fs with AWS credentials from settings
 - Supports `max_files` param for limiting files (takes most recent)
-- Primary key deduplication prevents reloading same file
+- **File-level state tracking** via `dlt.current.resource_state()` (not row-level incremental)
+- Merge disposition with primary key prevents duplicates on re-run
+
+**Why File-Level State (not `dlt.sources.incremental`)**:
+- S3 files have 19,000+ rows sharing the same `_file_date` cursor value
+- Row-level incremental causes O(n²) deduplication overhead
+- File-level tracking: O(n) linear performance
 
 **Schema Details (orders_create)**:
 
@@ -433,10 +439,12 @@ python scripts/run_pipeline.py my_source
 
 ## Incremental Loading
 
+### Row-Level Incremental (for low-volume sources)
+
 dlt supports incremental loading via `dlt.sources.incremental`:
 
 ```python
-@dlt.resource(write_disposition="append", primary_key="id")
+@dlt.resource(write_disposition="merge", primary_key="id")
 def events(
     last_timestamp: dlt.sources.incremental[str] = dlt.sources.incremental(
         "timestamp",
@@ -447,4 +455,27 @@ def events(
     yield from api.get_events(since=last_timestamp.last_value)
 ```
 
-**Note**: Incremental state is stored in dlt's state store. Currently we use Postgres destination which stores state in `_dlt_pipeline_state` table. State persists across runs but NOT across different pipeline instances.
+**Best for**: API sources with < 100 rows per cursor value (Everflow, Redtrack).
+
+### File-Level State (for high-volume sources)
+
+For sources with 1000+ rows sharing the same cursor value, use `dlt.current.resource_state()`:
+
+```python
+@dlt.resource(write_disposition="merge", primary_key=["file_name", "row_id"])
+def csv_resource():
+    state = dlt.current.resource_state()
+    last_date = state.get("last_file_date", "2024-01-01")
+
+    for file in get_files_since(last_date):
+        yield from process_file(file)
+        state["last_file_date"] = file.date
+```
+
+**Best for**: Bulk file imports (S3 CSV exports with 19k+ rows per file).
+
+**Why**: `dlt.sources.incremental` tracks every row for deduplication. With many rows sharing the same cursor value, this causes O(n²) performance.
+
+### State Storage
+
+State is stored in `_dlt_pipeline_state` table in Postgres. State persists across runs but NOT across different pipeline instances.

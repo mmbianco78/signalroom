@@ -67,6 +67,29 @@ def events(
     yield from api.get_events(since=updated_at.last_value)
 ```
 
+**WARNING: High-Volume Sources**
+
+`dlt.sources.incremental` tracks every row for deduplication. If many rows share the same cursor value, this causes O(n²) performance.
+
+| Rows per cursor value | Overhead | Recommendation |
+|----------------------|----------|----------------|
+| < 100 | Negligible | Use incremental |
+| 100 - 1,000 | Noticeable | Monitor performance |
+| > 1,000 | Severe | Use file-level state instead |
+
+For high-volume sources (like S3 CSV imports), use `dlt.current.resource_state()` for file-level tracking:
+
+```python
+@dlt.resource(write_disposition="merge", primary_key=["file_name", "row_id"])
+def csv_resource():
+    state = dlt.current.resource_state()
+    last_date = state.get("last_file_date", "2024-01-01")
+
+    for file in get_files_since(last_date):
+        yield from process_file(file)
+        state["last_file_date"] = file.date  # Manual state update
+```
+
 ## Primary Keys
 
 Required for `merge` disposition:
@@ -124,11 +147,11 @@ dlt pipeline {pipeline_name} drop-pending-packages
 
 ## SignalRoom Sources
 
-| Source | Write Mode | Primary Key |
-|--------|------------|-------------|
-| `s3_exports` | append | `_file_name, _row_id` |
-| `everflow` | merge | `date, affiliate_id, advertiser_id` |
-| `redtrack` | merge | `date, source_id` |
+| Source | Write Mode | Primary Key | State Tracking |
+|--------|------------|-------------|----------------|
+| `s3_exports` | merge | `_file_name, _row_id` | File-level (`resource_state`) |
+| `everflow` | merge | `date, affiliate_id, advertiser_id` | Row-level (`incremental`) |
+| `redtrack` | merge | `date, source_id` | Row-level (`incremental`) |
 
 ## Testing Locally
 
