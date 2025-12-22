@@ -14,7 +14,7 @@ import jinja2
 from mjml import mjml_to_html
 
 from signalroom.common import get_logger
-from signalroom.reports.registry import Report, get_report
+from signalroom.reports.registry import get_report
 
 log = get_logger(__name__)
 

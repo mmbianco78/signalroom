@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from signalroom.common import get_logger, settings
-from signalroom.reports.registry import Report, get_report
+from signalroom.reports.registry import get_report
 from signalroom.reports.renderer import render_report
 
 log = get_logger(__name__)
@@ -102,6 +102,7 @@ def run_report(
     # Parse JSON fields if needed
     if isinstance(data.get("top_affiliates"), str):
         import json
+
         data["top_affiliates"] = json.loads(data["top_affiliates"]) or []
     elif data.get("top_affiliates") is None:
         data["top_affiliates"] = []
@@ -119,6 +120,7 @@ def run_report(
     # Send if requested
     if send:
         import asyncio
+
         asyncio.run(_send_report(channel, content))
 
     return content

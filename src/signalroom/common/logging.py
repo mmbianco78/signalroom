@@ -37,9 +37,7 @@ def configure_logging(*, json_output: bool = False, level: str = "INFO") -> None
                 structlog.processors.format_exc_info,
                 structlog.processors.JSONRenderer(),
             ],
-            wrapper_class=structlog.make_filtering_bound_logger(
-                getattr(logging, level.upper())
-            ),
+            wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, level.upper())),
             context_class=dict,
             logger_factory=structlog.PrintLoggerFactory(),
             cache_logger_on_first_use=True,
@@ -51,9 +49,7 @@ def configure_logging(*, json_output: bool = False, level: str = "INFO") -> None
                 *shared_processors,
                 structlog.dev.ConsoleRenderer(colors=True),
             ],
-            wrapper_class=structlog.make_filtering_bound_logger(
-                getattr(logging, level.upper())
-            ),
+            wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, level.upper())),
             context_class=dict,
             logger_factory=structlog.PrintLoggerFactory(),
             cache_logger_on_first_use=True,

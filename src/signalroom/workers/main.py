@@ -15,7 +15,11 @@ from signalroom.temporal.activities import (
     send_notification_activity,
 )
 from signalroom.temporal.config import get_temporal_client
-from signalroom.temporal.workflows import RunReportWorkflow, ScheduledSyncWorkflow, SyncSourceWorkflow
+from signalroom.temporal.workflows import (
+    RunReportWorkflow,
+    ScheduledSyncWorkflow,
+    SyncSourceWorkflow,
+)
 
 log = get_logger(__name__)
 

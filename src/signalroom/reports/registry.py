@@ -7,9 +7,10 @@ Reports are defined with:
 - schedule: Optional cron expression
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from signalroom.common import get_logger
 
