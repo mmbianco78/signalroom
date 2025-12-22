@@ -4,8 +4,9 @@ Ingests CSV files pushed daily to an S3 bucket (e.g., from Sticky.io).
 Creates separate tables per prefix (orders_create, orders_update, etc.).
 Tags all data with _client_id for multi-client support.
 
-Uses dlt incremental loading to track the last processed file date.
-Only processes files with dates >= the last loaded date.
+Uses file-level filtering (not dlt incremental) to avoid reprocessing.
+Tracks last processed file date in dlt pipeline state.
+Primary key (_file_name, _row_id) handles any duplicate rows.
 """
 
 from collections.abc import Iterator
@@ -19,10 +20,10 @@ from signalroom.common import get_logger, settings
 
 log = get_logger(__name__)
 
-# Initial value for incremental loading - set to day AFTER current max in database
-# This ensures we don't re-fetch historical data on first run with incremental
+# Initial start date for S3 file filtering
+# Only process files with dates >= this value
 # Database has data through 2025-12-18, so start from 2025-12-19
-S3_INITIAL_DATE = "2025-12-19"
+S3_START_DATE = "2025-12-19"
 
 
 def _make_table_name(prefix: str) -> str:
@@ -46,8 +47,9 @@ def _create_csv_resource(
 ) -> DltResource:
     """Create a dlt resource for a specific S3 prefix.
 
-    Uses dlt incremental to track the last processed file date.
-    Only processes files with dates >= the incremental start value.
+    Uses file-level filtering (not row-level incremental) for performance.
+    Tracks last processed file date in dlt resource state.
+    Primary key handles duplicate rows.
     """
     table_name = _make_table_name(prefix)
 
@@ -56,20 +58,12 @@ def _create_csv_resource(
         write_disposition="append",
         primary_key=["_file_name", "_row_id"],
     )
-    def csv_resource(
-        date_cursor: dlt.sources.incremental[str] = dlt.sources.incremental(
-            "_file_date",
-            initial_value=S3_INITIAL_DATE,
-        ),
-    ) -> Iterator[dict[str, Any]]:
+    def csv_resource() -> Iterator[dict[str, Any]]:
         """Load CSV files from S3 prefix.
 
-        Uses dlt incremental to track last processed date.
-        Filters files by date before processing for efficiency.
-
-        Args:
-            date_cursor: dlt incremental tracker for the _file_date field.
-                Automatically tracks max(_file_date) from yielded rows.
+        Filters files by date BEFORE processing (file-level, not row-level).
+        Tracks last processed date in resource state for efficiency.
+        Much faster than row-level dlt.sources.incremental for large files.
         """
         import csv
 
@@ -80,11 +74,12 @@ def _create_csv_resource(
             secret=settings.aws_secret_access_key.get_secret_value(),
         )
 
-        # Get incremental start value
-        start_date = date_cursor.start_value
+        # Get last processed date from resource state, or use initial value
+        state = dlt.current.resource_state()
+        start_date = state.get("last_file_date", S3_START_DATE)
 
         log.info(
-            "s3_incremental_fetch",
+            "s3_file_fetch",
             prefix=prefix,
             start_date=start_date,
         )
@@ -133,8 +128,14 @@ def _create_csv_resource(
             log.info("limiting_files", max_files=max_files, processing=len(files_to_process))
 
         total_rows = 0
+        max_date_seen: str | None = None
+
         for file_path, file_date in files_to_process:
             log.info("processing_file", file_path=file_path, file_date=file_date)
+
+            # Track max date for state update
+            if file_date and (max_date_seen is None or file_date > max_date_seen):
+                max_date_seen = file_date
 
             try:
                 with fs.open(file_path, "r") as f:
@@ -152,6 +153,11 @@ def _create_csv_resource(
             except Exception as e:
                 log.error("file_processing_error", file_path=file_path, error=str(e))
                 raise
+
+        # Update state with max date seen (for next run)
+        if max_date_seen:
+            state["last_file_date"] = max_date_seen
+            log.info("updated_state", last_file_date=max_date_seen)
 
         log.info(
             "s3_fetch_complete",
@@ -178,8 +184,8 @@ def s3_exports(
     """Source for CSV files from S3.
 
     Creates one table per prefix (e.g., orders_create, orders_update).
-    Uses dlt incremental loading to track the last processed file date.
-    Only processes files with dates >= the last loaded date.
+    Uses file-level filtering (not row-level incremental) for performance.
+    Only processes files with dates >= the last processed date.
 
     Args:
         bucket: S3 bucket name. Defaults to settings.
