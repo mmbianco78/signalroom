@@ -55,7 +55,7 @@ def _create_csv_resource(
 
     @dlt.resource(
         name=table_name,
-        write_disposition="append",
+        write_disposition="merge",  # Upsert to prevent duplicates on re-run
         primary_key=["_file_name", "_row_id"],
     )
     def csv_resource() -> Iterator[dict[str, Any]]:
